@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#e9e6df;font-family:'IBM Plex Sans',system-ui,sans-serif}
+a{color:#0d7d74}
+a:hover{color:#0a5f58}
+::-webkit-scrollbar{display:none}
+input,textarea{font-family:'IBM Plex Sans',sans-serif}
+</style>
+</helmet>
+<div style="display:flex;justify-content:center;padding:32px 16px">
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="390px,844px">
+
+<div style="width:100%;height:100%;background:#f7f5f0;display:flex;flex-direction:column;position:relative;overflow:hidden;color:#1b2430">
+
+<sc-if value="{{isOnboarding}}" hint-placeholder-val="{{true}}">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 26px;text-align:center;gap:22px">
+  <div style="width:64px;height:64px;border-radius:16px;background:#1c2534;display:flex;align-items:center;justify-content:center">
+    <div style="width:26px;height:26px;border-radius:50%;border:3px solid #f7f5f0"></div>
+  </div>
+  <div>
+    <div style="font-family:'Newsreader',serif;font-size:34px;font-weight:600;color:#1b2430;letter-spacing:-0.5px">Felicek</div>
+    <div style="font-size:13px;color:#5b6472;margin-top:6px;line-height:1.5">Verified talent. Zero spam.<br>Fair fees, always.</div>
+  </div>
+
+  <div style="width:100%;display:flex;flex-direction:column;gap:10px;margin-top:6px">
+    <div style="font-size:11px;color:#5b6472;text-transform:uppercase;letter-spacing:0.6px;text-align:left">Choose your account</div>
+    <sc-for list="{{roleOptions}}" as="r" hint-placeholder-count="4">
+      <div onClick="{{r.select}}" style="{{r.cardStyle}}">
+        <div style="text-align:left">
+          <div style="font-size:13.5px;font-weight:600;color:#1b2430">{{r.label}}</div>
+          <div style="font-size:10.5px;color:#5b6472;margin-top:2px">{{r.desc}}</div>
+        </div>
+        <div style="{{r.dotStyle}}"></div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div onClick="{{startVerification}}" style="width:100%;background:#1c2534;color:#f7f5f0;padding:15px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;margin-top:6px">Continue to Verification</div>
+  <div style="font-size:10.5px;color:#8a92a0;line-height:1.6">Identity verification is required for every account. Freelancer accounts additionally require a refundable $20 trust deposit.</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isPostJob}}" hint-placeholder-val="{{false}}">
+<div style="padding:14px 16px;display:flex;align-items:center;gap:14px;border-bottom:1px solid rgba(27,36,48,0.08);flex:none">
+  <div onClick="{{goBack}}" style="width:20px;height:20px;cursor:pointer;position:relative"><div style="position:absolute;width:10px;height:10px;border-left:2px solid #1b2430;border-bottom:2px solid #1b2430;transform:rotate(45deg);top:5px;left:6px"></div></div>
+  <div style="font-size:13px;font-weight:600;color:#1b2430">Post a New Job</div>
+</div>
+<div style="flex:1;overflow-y:auto;padding:18px 16px 24px;display:flex;flex-direction:column;gap:14px">
+  <div>
+    <div style="font-size:11.5px;color:#5b6472;margin-bottom:6px;font-weight:500">Job title</div>
+    <input value="{{newJobTitle}}" onChange="{{updateNewJobTitle}}" placeholder="e.g. Redesign onboarding flow" style="width:100%;box-sizing:border-box;border:1px solid rgba(27,36,48,0.12);border-radius:10px;padding:12px 14px;font-size:13.5px;outline:none;color:#1b2430;background:#fff"/>
+  </div>
+  <div>
+    <div style="font-size:11.5px;color:#5b6472;margin-bottom:6px;font-weight:500">Budget</div>
+    <input value="{{newJobBudget}}" onChange="{{updateNewJobBudget}}" placeholder="e.g. $500 or 0.5% Equity + $1,000" style="width:100%;box-sizing:border-box;border:1px solid rgba(27,36,48,0.12);border-radius:10px;padding:12px 14px;font-size:13.5px;outline:none;color:#1b2430;background:#fff"/>
+  </div>
+  <div>
+    <div style="font-size:11.5px;color:#5b6472;margin-bottom:6px;font-weight:500">Scope</div>
+    <textarea value="{{newJobScope}}" onChange="{{updateNewJobScope}}" placeholder="Describe the work in detail" style="width:100%;box-sizing:border-box;border:1px solid rgba(27,36,48,0.12);border-radius:10px;padding:12px 14px;font-size:13px;height:90px;resize:none;font-family:'IBM Plex Sans',sans-serif;outline:none;color:#1b2430;background:#fff"></textarea>
+  </div>
+  <div style="background:#f1eafb;border:1px solid rgba(134,89,201,0.25);border-radius:14px;padding:15px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#8659c9;font-weight:600">Live Skill Challenge</div>
+      <div onClick="{{toggleNewJobChallenge}}" style="{{challengeToggleStyle}}">{{newJobChallengeToggleLabel}}</div>
+    </div>
+    <sc-if value="{{newJobChallengeEnabled}}" hint-placeholder-val="{{false}}">
+      <div style="font-size:11.5px;color:#5b6472;margin-bottom:6px">Write your own screening task for applicants</div>
+      <textarea value="{{newJobChallengePrompt}}" onChange="{{updateNewJobChallengePrompt}}" placeholder="e.g. Build a working counter widget with persisted state in 4 minutes" style="width:100%;box-sizing:border-box;border:1px solid rgba(27,36,48,0.12);border-radius:10px;padding:12px 14px;font-size:13px;height:70px;resize:none;font-family:'IBM Plex Sans',sans-serif;outline:none;color:#1b2430;background:#fff"></textarea>
+    </sc-if>
+  </div>
+  <div onClick="{{submitNewJob}}" style="text-align:center;background:#1c2534;color:#f7f5f0;padding:15px;border-radius:12px;font-weight:700;font-size:13.5px;cursor:pointer;margin-top:4px">Publish Job</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isChat}}" hint-placeholder-val="{{false}}">
+<div style="padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(27,36,48,0.08);flex:none">
+  <div onClick="{{goBack}}" style="width:20px;height:20px;cursor:pointer;position:relative"><div style="position:absolute;width:10px;height:10px;border-left:2px solid #1b2430;border-bottom:2px solid #1b2430;transform:rotate(45deg);top:5px;left:6px"></div></div>
+  <div style="width:30px;height:30px;border-radius:50%;flex:none;background:conic-gradient(from 210deg,#0d9488,#2f5fa8,#0d9488)"></div>
+  <div style="flex:1">
+    <div style="font-size:13px;font-weight:600;color:#1b2430">{{chatApplicantName}}</div>
+    <div style="font-size:10.5px;color:#0d9488">Verified applicant</div>
+  </div>
+</div>
+<div style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px">
+  <sc-for list="{{chatMessages}}" as="m" hint-placeholder-count="3">
+    <div style="{{m.rowStyle}}"><div style="{{m.bubbleStyle}}">{{m.text}}</div></div>
+  </sc-for>
+</div>
+<div style="padding:10px 14px 14px;display:flex;gap:8px;border-top:1px solid rgba(27,36,48,0.08);flex:none">
+  <input value="{{chatDraft}}" onChange="{{updateChatDraft}}" placeholder="Write a message..." style="flex:1;border:1px solid rgba(27,36,48,0.1);border-radius:20px;padding:10px 14px;font-size:12.5px;outline:none;color:#1b2430;background:#faf9f6"/>
+  <div onClick="{{sendChatDraft}}" style="flex:none;background:#1c2534;color:#fff;font-size:12px;font-weight:600;padding:10px 16px;border-radius:20px;cursor:pointer">Send</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isProfileSetup}}" hint-placeholder-val="{{false}}">
+<div style="padding:14px 16px;border-bottom:1px solid rgba(27,36,48,0.08);flex:none">
+  <div style="font-size:13px;font-weight:600;color:#1b2430">Build Your Profile</div>
+</div>
+<div style="flex:1;overflow-y:auto;padding:18px 16px 24px;display:flex;flex-direction:column;gap:14px">
+  <div style="font-size:12px;color:#5b6472;line-height:1.6">A few quick questions so clients and freelancers know who they're working with.</div>
+  <sc-for list="{{profileQuestions}}" as="q" hint-placeholder-count="5">
+    <div>
+      <div style="font-size:11.5px;color:#5b6472;margin-bottom:6px;font-weight:500">{{q.label}}</div>
+      <sc-if value="{{q.multiline}}" hint-placeholder-val="{{false}}">
+        <textarea value="{{q.value}}" onChange="{{q.update}}" placeholder="{{q.placeholder}}" style="width:100%;box-sizing:border-box;border:1px solid rgba(27,36,48,0.12);border-radius:10px;padding:12px 14px;font-size:13px;height:70px;resize:none;font-family:'IBM Plex Sans',sans-serif;outline:none;color:#1b2430;background:#fff"></textarea>
+      </sc-if>
+      <sc-if value="{{q.isText}}" hint-placeholder-val="{{true}}">
+        <input value="{{q.value}}" onChange="{{q.update}}" placeholder="{{q.placeholder}}" style="width:100%;box-sizing:border-box;border:1px solid rgba(27,36,48,0.12);border-radius:10px;padding:12px 14px;font-size:13px;outline:none;color:#1b2430;background:#fff"/>
+      </sc-if>
+    </div>
+  </sc-for>
+  <div onClick="{{finishProfileSetup}}" style="text-align:center;background:#1c2534;color:#f7f5f0;padding:15px;border-radius:12px;font-weight:700;font-size:13.5px;cursor:pointer;margin-top:6px">Continue to Verification</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isKyc}}" hint-placeholder-val="{{false}}">
+<div style="padding:14px 16px;display:flex;align-items:center;gap:14px;border-bottom:1px solid rgba(27,36,48,0.08);flex:none">
+  <sc-if value="{{kycShowBack}}" hint-placeholder-val="{{false}}">
+    <div onClick="{{goBack}}" style="width:20px;height:20px;cursor:pointer;position:relative"><div style="position:absolute;width:10px;height:10px;border-left:2px solid #1b2430;border-bottom:2px solid #1b2430;transform:rotate(45deg);top:5px;left:6px"></div></div>
+  </sc-if>
+  <div style="font-size:13px;font-weight:600;color:#1b2430">Step {{kycStepNum}} of {{kycStepTotal}} · Verification</div>
+</div>
+<div style="flex:1;overflow-y:auto;padding:18px 16px 24px;display:flex;flex-direction:column;gap:16px">
+  <div style="height:5px;border-radius:3px;background:rgba(27,36,48,0.08)"><div style="{{kycProgressStyle}}"></div></div>
+
+  <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#5b6472">Identity Verification</div>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <div onClick="{{toggleNid}}" style="{{nidRowStyle}}">
+      <div>
+        <div style="font-size:13px;font-weight:500;color:#1b2430">National ID (NID)</div>
+        <div style="font-size:10.5px;color:#8a92a0;margin-top:2px">Encrypted · never shown to other users</div>
+      </div>
+      <div style="{{nidStatusStyle}}">{{nidStatusText}}</div>
+    </div>
+    <div onClick="{{toggleBirthCert}}" style="{{bcRowStyle}}">
+      <div>
+        <div style="font-size:13px;font-weight:500;color:#1b2430">Birth Certificate</div>
+        <div style="font-size:10.5px;color:#8a92a0;margin-top:2px">Optional secondary document</div>
+      </div>
+      <div style="{{bcStatusStyle}}">{{bcStatusText}}</div>
+    </div>
+  </div>
+
+  <sc-if value="{{showDepositStep}}" hint-placeholder-val="{{false}}">
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#5b6472;margin-top:6px">$20 Security Deposit</div>
+    <div style="background:#eaf6f4;border:1px solid rgba(13,148,136,0.3);border-radius:16px;padding:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-size:26px;font-weight:700;color:#1b2430">$20.00</div>
+        <div style="{{depositPillStyle}}">{{depositPillText}}</div>
+      </div>
+      <div style="font-size:11.5px;color:#5b6472;line-height:1.6;margin-bottom:14px">{{depositNote}}</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <sc-for list="{{mfsOptions}}" as="mfs" hint-placeholder-count="4">
+          <div onClick="{{mfs.select}}" style="{{mfs.chipStyle}}">{{mfs.label}}</div>
+        </sc-for>
+      </div>
+      <div onClick="{{payDeposit}}" style="{{depositButtonStyle}}">{{depositButtonText}}</div>
+    </div>
+    <div style="font-size:10.5px;color:#8a92a0;line-height:1.6">Fully refundable after your first successfully completed job. Platform maintenance fee is a flat 1%–2% — no hidden charges.</div>
+  </sc-if>
+
+  <div onClick="{{finishVerification}}" style="{{kycFinishButtonStyle}}">{{kycFinishButtonText}}</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isHome}}" hint-placeholder-val="{{false}}">
+<div style="padding:16px 18px 12px;flex:none;background:#fff">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div style="font-family:'Newsreader',serif;font-size:20px;font-weight:600;color:#1b2430">Felicek</div>
+    <div style="display:flex;gap:12px;align-items:center">
+      <div style="{{roleBadgeStyle}}">{{roleBadgeText}}</div>
+      <div onClick="{{goKycEdit}}" style="width:30px;height:30px;border-radius:50%;background:#f2f0ea;border:1px solid rgba(27,36,48,0.08);display:flex;align-items:center;justify-content:center;cursor:pointer">
+        <div style="width:12px;height:12px;border:2px solid #5b6472;border-radius:3px"></div>
+      </div>
+    </div>
+  </div>
+  <sc-if value="{{showVaultBar}}" hint-placeholder-val="{{false}}">
+    <div onClick="{{goVault}}" style="display:flex;align-items:center;justify-content:space-between;background:#eaf6f4;border:1px solid rgba(13,148,136,0.25);border-radius:12px;padding:10px 13px;cursor:pointer;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:9px">
+        <div style="width:8px;height:8px;border-radius:50%;background:{{vaultDotColor}}"></div>
+        <div style="font-size:11.5px;color:#0a5f58">Trust Fund Vault · <span style="font-weight:700;color:#1b2430">$20.00</span></div>
+      </div>
+      <div style="font-size:10.5px;font-weight:600;color:#0d9488">{{vaultStatusText}} ›</div>
+    </div>
+  </sc-if>
+  <div style="display:flex;align-items:center;gap:8px;background:#f2f0ea;border-radius:12px;padding:10px 12px;margin-bottom:12px">
+    <div style="width:14px;height:14px;border:2px solid #8a92a0;border-radius:50%;flex:none;position:relative"><div style="position:absolute;width:2px;height:6px;background:#8a92a0;right:-3px;bottom:-3px;transform:rotate(45deg)"></div></div>
+    <div style="font-size:12.5px;color:#8a92a0">Search jobs, skills, or clients...</div>
+  </div>
+  <sc-if value="{{isBrowseHome}}" hint-placeholder-val="{{true}}">
+    <div style="display:flex;gap:8px;overflow-x:auto">
+      <sc-for list="{{listingFilters}}" as="f" hint-placeholder-count="4">
+        <div onClick="{{f.select}}" style="{{f.chipStyle}}">{{f.label}}</div>
+      </sc-for>
+    </div>
+  </sc-if>
+</div>
+<sc-if value="{{isBrowseHome}}" hint-placeholder-val="{{true}}">
+<div style="flex:1;overflow-y:auto;padding:14px 16px 16px;display:flex;flex-direction:column;gap:12px">
+  <sc-for list="{{filteredGigs}}" as="g" hint-placeholder-count="4">
+    <div onClick="{{g.select}}" style="background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:16px;padding:15px;cursor:pointer">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div style="{{g.typeTagStyle}}">{{g.typeLabel}}</div>
+        <div style="font-size:13px;font-weight:700;color:#0d7d74">{{g.budget}}</div>
+      </div>
+      <div style="font-family:'Newsreader',serif;font-size:16px;font-weight:600;color:#1b2430;line-height:1.3;margin-bottom:8px">{{g.title}}</div>
+      <div style="font-size:11.5px;color:#5b6472;margin-bottom:10px;line-height:1.5">{{g.summary}}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">
+        <sc-for list="{{g.skills}}" as="sk" hint-placeholder-count="3">
+          <div style="font-size:10px;color:#5b6472;background:#f2f0ea;border:1px solid rgba(27,36,48,0.06);padding:3px 8px;border-radius:8px">{{sk.name}}</div>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div style="font-size:10.5px;font-weight:600;color:#0d9488;background:#eaf6f4;padding:4px 8px;border-radius:8px">{{g.trustScore}}% Verified</div>
+        <sc-if value="{{g.escrowFunded}}" hint-placeholder-val="{{false}}">
+          <div style="font-size:10.5px;font-weight:600;color:#2f5fa8;background:#eaf0fa;padding:4px 8px;border-radius:8px">Escrow Funded</div>
+        </sc-if>
+        <sc-if value="{{g.hasChallenge}}" hint-placeholder-val="{{false}}">
+          <div style="font-size:10.5px;font-weight:600;color:#8659c9;background:#f1eafb;padding:4px 8px;border-radius:8px">Skill Test</div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isDashboardHome}}" hint-placeholder-val="{{false}}">
+<div style="flex:1;overflow-y:auto;padding:14px 16px 18px;display:flex;flex-direction:column;gap:14px">
+  <div style="display:flex;gap:10px">
+    <div style="flex:1;background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:12px;padding:12px;text-align:center">
+      <div style="font-size:16px;font-weight:700;color:#1b2430">{{dashActiveListings}}</div>
+      <div style="font-size:10px;color:#8a92a0;margin-top:2px">Active Listings</div>
+    </div>
+    <div style="flex:1;background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:12px;padding:12px;text-align:center">
+      <div style="font-size:16px;font-weight:700;color:#0d9488">{{dashEscrowFunded}}</div>
+      <div style="font-size:10px;color:#8a92a0;margin-top:2px">Escrow Funded</div>
+    </div>
+    <div style="flex:1;background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:12px;padding:12px;text-align:center">
+      <div style="font-size:16px;font-weight:700;color:#2f5fa8">{{dashProposalsReceived}}</div>
+      <div style="font-size:10px;color:#8a92a0;margin-top:2px">Proposals</div>
+    </div>
+  </div>
+
+  <div onClick="{{postNewJob}}" style="text-align:center;background:#1c2534;color:#f7f5f0;padding:14px;border-radius:12px;font-weight:700;font-size:13.5px;cursor:pointer">+ Post a New Job</div>
+
+  <sc-if value="{{isAgencyRole}}" hint-placeholder-val="{{false}}">
+    <div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#5b6472;margin-bottom:8px">Team Seats</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{teamMembers}}" as="tm" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:12px;padding:11px 13px">
+            <div style="width:30px;height:30px;border-radius:50%;flex:none;background:conic-gradient(from 210deg,#0d9488,#2f5fa8,#0d9488)"></div>
+            <div style="flex:1">
+              <div style="font-size:12.5px;font-weight:600;color:#1b2430">{{tm.name}}</div>
+              <div style="font-size:10.5px;color:#8a92a0">{{tm.role}}</div>
+            </div>
+            <div style="font-size:10px;font-weight:600;color:#0d9488;background:#eaf6f4;padding:3px 8px;border-radius:8px">{{tm.status}}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isStartupRole}}" hint-placeholder-val="{{false}}">
+    <div style="background:#f1eafb;border:1px solid rgba(134,89,201,0.25);border-radius:14px;padding:15px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#8659c9;font-weight:600;margin-bottom:6px">Fast-Track Hiring & Equity</div>
+      <div style="font-size:12px;color:#1b2430;line-height:1.6">Your Startup Verification Badge is active — listings get priority placement and can offer equity-based milestone pay.</div>
+    </div>
+  </sc-if>
+
+  <div>
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#5b6472;margin-bottom:8px">Your Listings</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <sc-for list="{{myListings}}" as="g" hint-placeholder-count="3">
+        <div onClick="{{g.select}}" style="background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:16px;padding:15px;cursor:pointer">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <div style="{{g.typeTagStyle}}">{{g.typeLabel}}</div>
+            <div style="font-size:13px;font-weight:700;color:#0d7d74">{{g.budget}}</div>
+          </div>
+          <div style="font-family:'Newsreader',serif;font-size:16px;font-weight:600;color:#1b2430;line-height:1.3;margin-bottom:8px">{{g.title}}</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div style="font-size:10.5px;font-weight:600;color:#2f5fa8;background:#eaf0fa;padding:4px 8px;border-radius:8px">{{g.proposalsCount}} proposals</div>
+            <sc-if value="{{g.escrowFunded}}" hint-placeholder-val="{{false}}">
+              <div style="font-size:10.5px;font-weight:600;color:#0d9488;background:#eaf6f4;padding:4px 8px;border-radius:8px">Escrow Funded</div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{isJobDetail}}" hint-placeholder-val="{{false}}">
+<div style="padding:14px 16px;display:flex;align-items:center;gap:14px;border-bottom:1px solid rgba(27,36,48,0.08);flex:none">
+  <div onClick="{{goBack}}" style="width:20px;height:20px;cursor:pointer;position:relative"><div style="position:absolute;width:10px;height:10px;border-left:2px solid #1b2430;border-bottom:2px solid #1b2430;transform:rotate(45deg);top:5px;left:6px"></div></div>
+  <div style="font-size:13px;font-weight:600;color:#1b2430">Job Details</div>
+</div>
+<div style="flex:1;overflow-y:auto;padding:18px 18px 22px">
+  <div style="{{selectedGig.typeTagStyle}}">{{selectedGig.typeLabel}}</div>
+  <div style="font-family:'Newsreader',serif;font-size:22px;font-weight:600;color:#1b2430;line-height:1.3;margin:10px 0 6px">{{selectedGig.title}}</div>
+  <div style="font-size:12px;color:#8a92a0;margin-bottom:16px">{{selectedGig.budget}} · Posted {{selectedGig.posted}}</div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+    <div style="font-size:11px;font-weight:600;color:#0d9488;background:#eaf6f4;padding:5px 10px;border-radius:9px">{{selectedGig.trustScore}}% Client Trust</div>
+    <div style="font-size:11px;font-weight:600;color:#2f5fa8;background:#eaf0fa;padding:5px 10px;border-radius:9px">Escrow Verified</div>
+    <sc-if value="{{isFreelancerView}}" hint-placeholder-val="{{true}}">
+      <div style="font-size:11px;font-weight:600;color:#5b6472;background:#f2f0ea;padding:5px 10px;border-radius:9px">{{selectedGig.applicantsCount}} Applicants</div>
+      <div style="{{selectedGig.clientStatusStyle}}">Client · {{selectedGig.clientStatusText}}</div>
+    </sc-if>
+  </div>
+
+  <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#5b6472;margin-bottom:8px">Project Scope</div>
+  <div style="font-size:13.5px;line-height:1.7;color:#2b3340;margin-bottom:18px">{{selectedGig.scope}}</div>
+
+  <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#5b6472;margin-bottom:8px">Milestones</div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+    <sc-for list="{{selectedGig.milestones}}" as="m" hint-placeholder-count="3">
+      <div style="display:flex;justify-content:space-between;align-items:center;background:#f9f8f5;border:1px solid rgba(27,36,48,0.06);border-radius:11px;padding:11px 13px">
+        <div style="font-size:12.5px;color:#1b2430">{{m.label}}</div>
+        <div style="font-size:12px;font-weight:600;color:#0d7d74">{{m.amount}}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{isFreelancerView}}" hint-placeholder-val="{{true}}">
+    <div style="background:#f1eafb;border:1px solid rgba(134,89,201,0.25);border-radius:14px;padding:16px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#8659c9;font-weight:600">Live Skill Challenge</div>
+        <div style="font-size:9.5px;color:#8a92a0">4 min preview</div>
+      </div>
+      <div style="font-size:12.5px;color:#1b2430;line-height:1.6;margin-bottom:12px">{{selectedGig.challengePrompt}}</div>
+      <div onClick="{{startChallenge}}" style="{{challengeButtonStyle}}">{{challengeButtonText}}</div>
+    </div>
+
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#5b6472;margin-bottom:8px">Your Bid</div>
+    <input value="{{bidAmount}}" onChange="{{updateBidAmount}}" placeholder="Enter your bid amount" style="width:100%;box-sizing:border-box;border:1px solid rgba(27,36,48,0.12);border-radius:11px;padding:13px 14px;font-size:13.5px;outline:none;color:#1b2430;background:#fff;margin-bottom:14px">
+    <div onClick="{{submitProposal}}" style="{{submitProposalStyle}}">{{submitProposalText}}</div>
+  </sc-if>
+
+  <sc-if value="{{isOwnerView}}" hint-placeholder-val="{{false}}">
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#5b6472;margin-bottom:8px">Listing Analytics</div>
+    <div style="display:flex;gap:10px;margin-bottom:14px">
+      <div style="flex:1;background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:16px;font-weight:700;color:#1b2430">{{selectedGig.views}}</div>
+        <div style="font-size:10px;color:#8a92a0;margin-top:2px">Views</div>
+      </div>
+      <div style="flex:1;background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:16px;font-weight:700;color:#2f5fa8">{{selectedGig.shortlisted}}</div>
+        <div style="font-size:10px;color:#8a92a0;margin-top:2px">Shortlisted</div>
+      </div>
+      <div style="flex:1;background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:14px;font-weight:700;color:#0d7d74">{{selectedGig.avgBid}}</div>
+        <div style="font-size:10px;color:#8a92a0;margin-top:2px">Avg. Bid</div>
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:14px;padding:16px;margin-bottom:20px">
+      <div style="font-size:10.5px;color:#8a92a0;margin-bottom:10px">Applicants — last 7 days</div>
+      <div style="display:flex;align-items:flex-end;gap:8px;height:80px">
+        <sc-for list="{{selectedGig.chartBars}}" as="bar" hint-placeholder-count="7">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:5px">
+            <div style="width:100%;border-radius:4px 4px 0 0;background:#0d9488;height:{{bar.heightPct}}%"></div>
+            <div style="font-size:9px;color:#8a92a0">{{bar.label}}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#5b6472;margin-bottom:8px">Applicants & Skill Challenge Results</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+      <sc-for list="{{selectedGig.applicants}}" as="ap" hint-placeholder-count="2">
+        <div style="background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:14px;padding:13px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div style="font-size:13px;font-weight:600;color:#1b2430">{{ap.name}}</div>
+            <div style="font-size:12px;font-weight:700;color:#0d7d74">{{ap.bid}}</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <div style="font-size:10.5px;font-weight:600;color:#0d9488;background:#eaf6f4;padding:3px 8px;border-radius:8px">{{ap.trustScore}}% Trust</div>
+            <div style="{{ap.challengeStyle}}">{{ap.challengeLabel}}</div>
+          </div>
+          <sc-if value="{{ap.hasAnswer}}" hint-placeholder-val="{{false}}">
+            <div style="font-size:11.5px;color:#2b3340;line-height:1.6;background:#f9f8f5;border:1px solid rgba(27,36,48,0.06);border-radius:10px;padding:10px 12px;margin-bottom:8px">{{ap.answerText}}</div>
+          </sc-if>
+          <sc-if value="{{ap.canMessage}}" hint-placeholder-val="{{false}}">
+            <div onClick="{{ap.openChat}}" style="display:inline-block;font-size:11px;font-weight:600;color:#0d7d74;background:#eaf6f4;padding:6px 11px;border-radius:8px;cursor:pointer">Message</div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{selectedGig.hasEquity}}" hint-placeholder-val="{{false}}">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#5b6472;margin-bottom:8px">Equity Offered (optional)</div>
+      <input value="{{equityInput}}" onChange="{{updateEquityInput}}" placeholder="{{selectedGig.equityDefault}}" style="width:100%;box-sizing:border-box;border:1px solid rgba(27,36,48,0.12);border-radius:11px;padding:13px 14px;font-size:13.5px;outline:none;color:#1b2430;background:#fff;margin-bottom:14px">
+    </sc-if>
+
+    <div style="display:flex;gap:10px">
+      <div style="flex:1;text-align:center;background:#1c2534;color:#f7f5f0;padding:14px;border-radius:12px;font-weight:700;font-size:13px;cursor:pointer">Edit Listing</div>
+      <div style="flex:1;text-align:center;background:#fbe9e7;color:#b8382f;padding:14px;border-radius:12px;font-weight:700;font-size:13px;cursor:pointer">Close Listing</div>
+    </div>
+  </sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{isProposals}}" hint-placeholder-val="{{false}}">
+<div style="padding:16px 16px 10px;border-bottom:1px solid rgba(27,36,48,0.08);flex:none">
+  <div style="font-family:'Newsreader',serif;font-size:20px;font-weight:600;color:#1b2430">{{proposalsHeading}}</div>
+  <sc-if value="{{isReviewerRole}}" hint-placeholder-val="{{false}}">
+    <div style="display:flex;align-items:center;gap:7px;margin-top:8px;background:#eaf6f4;border:1px solid rgba(13,148,136,0.2);border-radius:9px;padding:8px 11px">
+      <div style="width:7px;height:7px;border-radius:50%;background:#0d9488"></div>
+      <div style="font-size:10.5px;color:#0a5f58">AI spam filter blocked {{spamBlockedCount}} generic proposals this week</div>
+    </div>
+  </sc-if>
+</div>
+<div style="flex:1;overflow-y:auto;padding:12px 16px 16px;display:flex;flex-direction:column;gap:12px">
+  <sc-for list="{{proposalItems}}" as="p" hint-placeholder-count="4">
+    <div style="background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:14px;padding:13px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:600;color:#1b2430">{{p.title}}</div>
+        <div style="{{p.statusStyle}}">{{p.statusText}}</div>
+      </div>
+      <div style="font-size:11.5px;color:#5b6472;line-height:1.5;margin-bottom:8px">{{p.note}}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:11.5px;font-weight:600;color:#0d7d74">{{p.amount}}</div>
+        <div style="font-size:10.5px;color:#8a92a0">{{p.time}}</div>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isVault}}" hint-placeholder-val="{{false}}">
+<div style="padding:16px 16px 10px;flex:none">
+  <div style="font-family:'Newsreader',serif;font-size:20px;font-weight:600;color:#1b2430">Wallet &amp; Vault</div>
+</div>
+<div style="flex:1;overflow-y:auto;padding:8px 16px 20px;display:flex;flex-direction:column;gap:14px">
+  <div style="background:#1c2534;border-radius:18px;padding:20px">
+    <div style="font-size:10.5px;color:#aab2c0;text-transform:uppercase;letter-spacing:0.6px">Available Balance</div>
+    <div style="font-size:30px;font-weight:700;color:#fff;margin:6px 0 14px">{{walletBalance}}</div>
+    <div style="display:flex;gap:10px">
+      <div onClick="{{withdrawFunds}}" style="flex:1;text-align:center;background:#0d9488;color:#fff;padding:11px;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer">Withdraw</div>
+      <div style="flex:1;text-align:center;background:rgba(255,255,255,0.08);color:#fff;padding:11px;border-radius:10px;font-weight:600;font-size:12.5px;border:1px solid rgba(255,255,255,0.15)">Add Funds</div>
+    </div>
+  </div>
+
+  <div style="{{vaultCardStyle}}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:600;color:#1b2430">Trust Fund Vault</div>
+      <div style="{{vaultStatusPillStyle}}">{{vaultStatusText}}</div>
+    </div>
+    <div style="font-size:22px;font-weight:700;color:#1b2430;margin-bottom:6px">$20.00</div>
+    <div style="font-size:11px;color:#5b6472;line-height:1.5">{{vaultDescription}}</div>
+  </div>
+
+  <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#5b6472;margin-top:4px">Payout Method</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <sc-for list="{{payoutMethods}}" as="pm" hint-placeholder-count="4">
+      <div onClick="{{pm.select}}" style="{{pm.chipStyle}}">{{pm.label}}</div>
+    </sc-for>
+  </div>
+  <div style="font-size:10.5px;color:#8a92a0;line-height:1.6">Direct local payouts (bKash/Nagad/Bank) with zero platform markup, or PayPal for international clients — only a flat 1%–2% maintenance fee applies.</div>
+
+  <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#5b6472;margin-top:6px">Recent Activity</div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <sc-for list="{{transactions}}" as="t" hint-placeholder-count="3">
+      <div style="display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:11px;padding:11px 13px">
+        <div>
+          <div style="font-size:12.5px;color:#1b2430">{{t.label}}</div>
+          <div style="font-size:10px;color:#8a92a0;margin-top:1px">{{t.time}}</div>
+        </div>
+        <div style="{{t.amountStyle}}">{{t.amount}}</div>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{isProfile}}" hint-placeholder-val="{{false}}">
+<div style="flex:1;overflow-y:auto">
+  <div style="background:#1c2534;padding:20px 16px 18px;position:relative">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:'Newsreader',serif;font-size:18px;font-weight:600;color:#fff">Profile</div>
+      <div onClick="{{editProfile}}" style="font-size:11.5px;font-weight:600;color:#fff;background:rgba(255,255,255,0.1);padding:6px 12px;border-radius:8px;cursor:pointer">Edit Profile</div>
+    </div>
+  </div>
+  <div style="padding:16px;display:flex;flex-direction:column;gap:16px;padding-bottom:20px">
+    <div style="background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;gap:14px;align-items:flex-start">
+        <div style="width:64px;height:64px;border-radius:50%;flex:none;background:conic-gradient(from 210deg,#0d9488,#2f5fa8,#0d9488)"></div>
+        <div style="flex:1;padding-top:4px">
+          <div style="font-size:17px;font-weight:600;color:#1b2430">{{profileName}}</div>
+          <div style="font-size:12.5px;color:#5b6472;margin-top:2px">{{profileTitle}}</div>
+          <div style="font-size:11px;color:#8a92a0;margin-top:3px">{{profileLocation}}</div>
+        </div>
+        <div style="{{roleBadgeStyle}}">{{roleBadgeText}}</div>
+      </div>
+      <div style="font-size:13px;color:#2b3340;line-height:1.6">{{profileBio}}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <sc-for list="{{profileSkills}}" as="sk" hint-placeholder-count="4">
+          <div style="font-size:10.5px;color:#5b6472;background:#f2f0ea;border:1px solid rgba(27,36,48,0.06);padding:4px 9px;border-radius:8px">{{sk.name}}</div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <div style="flex:1;background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:16px;font-weight:700;color:#0d9488">{{statJobSuccess}}</div>
+        <div style="font-size:10px;color:#8a92a0;margin-top:2px">Job Success</div>
+      </div>
+      <div style="flex:1;background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:16px;font-weight:700;color:#1b2430">{{statEarned}}</div>
+        <div style="font-size:10px;color:#8a92a0;margin-top:2px">Total Earned</div>
+      </div>
+      <div style="flex:1;background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:16px;font-weight:700;color:#2f5fa8">{{statJobsDone}}</div>
+        <div style="font-size:10px;color:#8a92a0;margin-top:2px">Jobs Done</div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#5b6472;margin-bottom:8px">Portfolio</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <sc-for list="{{portfolioItems}}" as="pf" hint-placeholder-count="3">
+          <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(45deg,#e3e0d8,#e3e0d8 8px,#dcd8ce 8px,#dcd8ce 16px);display:flex;align-items:center;justify-content:center;font-size:9px;color:#9a9488;font-family:ui-monospace,monospace;text-align:center;padding:4px">{{pf.label}}</div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#5b6472;margin-bottom:8px">Work History &amp; Reviews</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <sc-for list="{{reviews}}" as="rv" hint-placeholder-count="2">
+          <div style="background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:12px;padding:13px 14px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:5px">
+              <div style="font-size:12.5px;font-weight:600;color:#1b2430;flex:1;min-width:0">{{rv.project}}</div>
+              <div style="font-size:12px;color:#d4a017;font-weight:700;flex:none;white-space:nowrap">{{rv.rating}}</div>
+            </div>
+            <div style="font-size:12px;color:#5b6472;line-height:1.5">{{rv.text}}</div>
+            <div style="font-size:10.5px;color:#8a92a0;margin-top:6px">{{rv.client}} · {{rv.amount}}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div onClick="{{goKycEdit}}" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:14px;padding:14px 16px;cursor:pointer">
+      <div>
+        <div style="font-size:12.5px;color:#8a92a0">Verification</div>
+        <div style="font-size:14px;font-weight:600;color:#1b2430;margin-top:2px">KYC &amp; Deposit Vault</div>
+      </div>
+      <div style="font-size:12px;color:#0d7d74;font-weight:600">Manage ›</div>
+    </div>
+
+    <div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#5b6472;margin-bottom:8px">Switch Account Type</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{roleOptions}}" as="r" hint-placeholder-count="4">
+          <div onClick="{{r.select}}" style="{{r.cardStyle}}">
+            <div style="text-align:left">
+              <div style="font-size:13px;font-weight:600;color:#1b2430">{{r.label}}</div>
+              <div style="font-size:10.5px;color:#5b6472;margin-top:2px">{{r.desc}}</div>
+            </div>
+            <div style="{{r.dotStyle}}"></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:14px;overflow:hidden">
+      <div style="padding:13px 14px;font-size:13px;color:#1b2430;border-bottom:1px solid rgba(27,36,48,0.06)">Notification preferences</div>
+      <div style="padding:13px 14px;font-size:13px;color:#1b2430;border-bottom:1px solid rgba(27,36,48,0.06)">Privacy &amp; data</div>
+      <div style="padding:13px 14px;font-size:13px;color:#b8382f">Log out</div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{showTabBar}}" hint-placeholder-val="{{false}}">
+<div style="display:flex;border-top:1px solid rgba(27,36,48,0.08);background:#fff;flex:none;padding:8px 0 6px">
+  <div onClick="{{goHome}}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+    <div style="{{tabHomeShape}}"></div>
+    <div style="{{tabHomeText}}">Home</div>
+  </div>
+  <div onClick="{{goProposals}}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+    <div style="{{tabProposalsShape}}"></div>
+    <div style="{{tabProposalsText}}">Proposals</div>
+  </div>
+  <div onClick="{{goVault}}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+    <div style="{{tabVaultShape}}"></div>
+    <div style="{{tabVaultText}}">Payment</div>
+  </div>
+  <div onClick="{{goProfile}}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+    <div style="{{tabProfileShape}}"></div>
+    <div style="{{tabProfileText}}">Profile</div>
+  </div>
+</div>
+</sc-if>
+
+</div>
+</x-import>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const ROLES = [
+  {key:'freelancer', label:'Freelancer', desc:'Find verified gigs, take skill challenges'},
+  {key:'client', label:'Individual Client', desc:'Post jobs, hire with escrow protection'},
+  {key:'agency', label:'Agency', desc:'Multi-seat team, bulk listings, shared escrow'},
+  {key:'startup', label:'Startup', desc:'Fast-track hiring, equity-based roles'}
+];
+
+const PROFILE_BY_ROLE = {
+  freelancer:{name:'Sadia R.', title:'Flutter Developer & UI Engineer', location:'Dhaka, Bangladesh · $28/hr',
+    bio:'I build polished, production-ready Flutter apps for fintech and logistics startups. 5 years of experience, focused on clean architecture and pixel-perfect UI.',
+    skills:['Flutter','Dart','Firebase','UI/UX','REST APIs'], jobSuccess:'98%', earned:'$18.4K', jobsDone:'14',
+    reviews:[
+      {project:'Onboarding Flow Redesign',rating:'★★★★★',text:'Sadia delivered ahead of schedule with pixel-perfect screens. Communication was excellent throughout.',client:'FinNova Client',amount:'$450'},
+      {project:'Logistics App Bug Sprint',rating:'★★★★★',text:'Fixed 20+ critical bugs in under a week. Would hire again without hesitation.',client:'CargoLink Client',amount:'$620'}
+    ]},
+  client:{name:'FinNova Capital', title:'Individual Client · Fintech', location:'Remote-first · Hiring since 2024',
+    bio:'We post short, well-scoped freelance projects and pay via pre-funded escrow. Looking for reliable freelancers for ongoing fintech app work.',
+    skills:['Product Design','Mobile Dev','Content'], jobSuccess:'100%', earned:'$9.2K Paid', jobsDone:'6',
+    reviews:[
+      {project:'Hired Sadia R.',rating:'★★★★★',text:'Excellent freelancer — clear communication, delivered exactly to spec.',client:'You',amount:'$450'},
+      {project:'Hired DevCraft Agency',rating:'★★★★☆',text:'Solid backend work, minor delays but great final quality.',client:'You',amount:'$12,000'}
+    ]},
+  agency:{name:'DevCraft Studio', title:'Agency · 8 Verified Engineers', location:'Multi-seat team · Est. 2021',
+    bio:'A full-service dev agency specializing in backend rebuilds, cloud infrastructure, and long-term SaaS engagements with shared escrow management.',
+    skills:['Node.js','AWS','PostgreSQL','DevOps'], jobSuccess:'96%', earned:'$142K', jobsDone:'37',
+    reviews:[
+      {project:'Logistics SaaS Backend Rebuild',rating:'★★★★★',text:'DevCraft\'s team handled our entire migration flawlessly. True experts.',client:'ShipRight Client',amount:'$12,000'},
+      {project:'API Infrastructure Overhaul',rating:'★★★★☆',text:'Great technical depth, would recommend for complex infra work.',client:'DataPort Client',amount:'$8,500'}
+    ]},
+  startup:{name:'Nimbus Labs', title:'Startup · Pre-Seed · Verified', location:'Remote · Founded 2025',
+    bio:'A verified pre-seed startup offering fast-track, milestone-based roles with equity upside for founding team members.',
+    skills:['Flutter','Growth','Firebase'], jobSuccess:'92%', earned:'$3.1K + Equity', jobsDone:'4',
+    reviews:[
+      {project:'Founding Engineer Sprint',rating:'★★★★★',text:'Nimbus paid every micro-milestone on time and communicated clearly about equity terms.',client:'Freelancer Review',amount:'$800'}
+    ]}
+};
+
+const PROFILE_QUESTIONS_BY_ROLE = {
+  freelancer:[
+    {key:'fullName', label:'Full name', placeholder:'e.g. Sadia Rahman'},
+    {key:'title', label:'Professional title', placeholder:'e.g. Flutter Developer & UI Engineer'},
+    {key:'bio', label:'Short bio', placeholder:'Tell clients what you do best', multiline:true},
+    {key:'skills', label:'Primary skills', placeholder:'e.g. Flutter, Firebase, UI/UX'},
+    {key:'rate', label:'Hourly rate (USD)', placeholder:'e.g. 28'},
+    {key:'location', label:'Location', placeholder:'e.g. Dhaka, Bangladesh'}
+  ],
+  client:[
+    {key:'fullName', label:'Full name / Company name', placeholder:'e.g. FinNova Capital'},
+    {key:'title', label:'Industry', placeholder:'e.g. Fintech'},
+    {key:'bio', label:'What are you usually hiring for?', placeholder:'Briefly describe your typical projects', multiline:true},
+    {key:'location', label:'Location', placeholder:'e.g. Remote-first'}
+  ],
+  agency:[
+    {key:'fullName', label:'Agency name', placeholder:'e.g. DevCraft Studio'},
+    {key:'title', label:'Specialization', placeholder:'e.g. Backend & Cloud Infrastructure'},
+    {key:'bio', label:'Short agency description', placeholder:'What makes your team stand out?', multiline:true},
+    {key:'skills', label:'Team size', placeholder:'e.g. 8 engineers'},
+    {key:'location', label:'Location', placeholder:'e.g. Multi-seat, remote'}
+  ],
+  startup:[
+    {key:'fullName', label:'Startup name', placeholder:'e.g. Nimbus Labs'},
+    {key:'title', label:'Funding stage', placeholder:'e.g. Pre-Seed'},
+    {key:'bio', label:'What are you hiring for?', placeholder:'Describe the role and equity terms', multiline:true},
+    {key:'location', label:'Location', placeholder:'e.g. Remote, Founded 2025'}
+  ]
+};
+
+const APPLICANTS_BY_GIG = {
+  1:[
+    {name:'Sadia R.', bid:'$430', trustScore:98, challengeDone:true, answer:'Implemented the bottom sheet with an animated backdrop, drag handle, and spring-based dismiss gesture — matched the spec exactly.'},
+    {name:'Farah T.', bid:'$380', trustScore:91, challengeDone:true, answer:'Built a basic bottom sheet widget but skipped the drag-to-dismiss animation from the spec.'},
+    {name:'Junaid A.', bid:'$150', trustScore:40, challengeDone:false, answer:''}
+  ],
+  2:[
+    {name:'DevCraft Studio (Agency)', bid:'$11,200', trustScore:95, challengeDone:false, answer:'', reviewNote:'Portfolio & past escrow history reviewed instead of a live challenge.'}
+  ],
+  3:[
+    {name:'Karim S.', bid:'$2,000 + 0.5%', trustScore:95, challengeDone:true, answer:'Shipped a counter widget using SharedPreferences for persistence with clean, testable state management.'},
+    {name:'Priya N.', bid:'$1,800 + 0.4%', trustScore:88, challengeDone:true, answer:'Used local setState only — counter reset on app restart, persistence requirement not fully met.'}
+  ],
+  4:[
+    {name:'Elena M.', bid:'$550', trustScore:93, challengeDone:true, answer:'"Continuous deployment is only half the story — without observability, teams ship blind. Here\'s how leading DevOps teams close that gap..."'},
+    {name:'Omar K.', bid:'$600', trustScore:75, challengeDone:false, answer:''}
+  ],
+  5:[
+    {name:'PixelCraft Agency', bid:'$7,900', trustScore:93, challengeDone:false, answer:'', reviewNote:'Portfolio-based review — no live challenge for this listing.'}
+  ],
+  6:[
+    {name:'Zara Q.', bid:'$1,100 + 0.3%', trustScore:90, challengeDone:true, answer:'3-channel plan: paid social retargeting, a referral loop with double-sided incentives, and SEO-driven content funnels.'}
+  ]
+};
+
+const TEAM_MEMBERS = [
+  {name:'Rafiq H.', role:'Backend Lead', status:'Active'},
+  {name:'Mina K.', role:'UI Designer', status:'Active'},
+  {name:'Tomas V.', role:'QA Engineer', status:'Invited'}
+];
+
+const GIGS = [
+ {id:1,type:'freelance',typeLabel:'Freelance',title:'Design a Flutter Onboarding Flow',summary:'Need 5 polished onboarding screens for a fintech app, dark theme, Material 3.',budget:'$450',posted:'2h ago',trustScore:98,escrowFunded:true,hasChallenge:true,skills:['Flutter','UI/UX','Figma'],proposalsCount:12,
+   scope:'Design and hand off 5 onboarding screens for an early-stage fintech app. Deliverables include Figma source files and exported assets, following Material 3 dark theme guidelines.',
+   milestones:[{label:'Wireframes approved',amount:'$100'},{label:'High-fidelity screens',amount:'$250'},{label:'Final handoff + assets',amount:'$100'}],
+   challengePrompt:'Recreate this bottom-sheet component spec in Flutter within 4 minutes — tests widget composition speed.',
+   views:214, shortlisted:3, avgBid:'$410', clientStatus:'Active now', clientStatusColor:'#0d9488', weekly:[3,5,2,6,8,4,7]},
+ {id:2,type:'agency',typeLabel:'Agency',title:'Full Backend Rebuild for Logistics SaaS',summary:'Multi-month engagement, need a 3-person team for API + infra rebuild.',budget:'$12,000',posted:'6h ago',trustScore:95,escrowFunded:true,hasChallenge:false,skills:['Node.js','PostgreSQL','AWS'],proposalsCount:5,
+   scope:'Rebuild the backend of a logistics SaaS product currently on legacy infrastructure. Includes API redesign, database migration, and AWS deployment pipeline.',
+   milestones:[{label:'Architecture proposal',amount:'$2,000'},{label:'Core API migration',amount:'$6,000'},{label:'Go-live + handover',amount:'$4,000'}],
+   challengePrompt:'No live challenge required for agency-tier engagements — portfolio review instead.',
+   views:98, shortlisted:2, avgBid:'$11,400', clientStatus:'Active 3h ago', clientStatusColor:'#d4a017', weekly:[1,2,1,2,3,2,1]},
+ {id:3,type:'startup',typeLabel:'Startup · Equity',title:'Founding Mobile Engineer (Equity + Micro-milestones)',summary:'Pre-seed startup looking for a founding engineer, part equity + part milestone pay.',budget:'0.5% Equity + $2,000',posted:'1d ago',trustScore:91,escrowFunded:true,hasChallenge:true,skills:['Flutter','Firebase','Growth'],proposalsCount:8,
+   scope:'Join as founding mobile engineer for a verified pre-seed startup. Fast-track hiring: first milestone paid within 5 days of acceptance.',
+   milestones:[{label:'MVP core screens',amount:'$800'},{label:'Auth + payments',amount:'$700'},{label:'Public beta launch',amount:'$500'}],
+   challengePrompt:'Ship a working counter widget with persisted state in Flutter — 4 minute timed test.',
+   views:156, shortlisted:4, avgBid:'$1,850', clientStatus:'Active 20m ago', clientStatusColor:'#0d9488', weekly:[2,4,3,5,6,4,5], equity:'0.5%'},
+ {id:4,type:'freelance',typeLabel:'Freelance',title:'Write 10 SEO Blog Posts for SaaS Startup',summary:'B2B SaaS company needs long-form technical content, 1200 words each.',budget:'$600',posted:'1d ago',trustScore:89,escrowFunded:true,hasChallenge:true,skills:['SEO','Copywriting'],proposalsCount:6,
+   scope:'Write 10 SEO-optimized blog posts (1200 words each) for a B2B SaaS company in the DevOps space. Topics and outlines provided.',
+   milestones:[{label:'3 posts delivered',amount:'$180'},{label:'6 more posts',amount:'$360'},{label:'Final post + revisions',amount:'$60'}],
+   challengePrompt:'Write a 150-word intro paragraph on a given DevOps topic in 4 minutes.',
+   views:74, shortlisted:1, avgBid:'$540', clientStatus:'Inactive 2d', clientStatusColor:'#8a92a0', weekly:[1,1,2,1,0,1,1]},
+ {id:5,type:'agency',typeLabel:'Agency',title:'Brand Identity for Retail Chain Relaunch',summary:'Full brand refresh: logo, packaging, and 20-page brand guideline doc.',budget:'$8,500',posted:'2d ago',trustScore:93,escrowFunded:true,hasChallenge:false,skills:['Branding','Illustrator'],proposalsCount:9,
+   scope:'Complete brand identity refresh for a 12-store retail chain, including logo system, packaging templates, and a full brand guideline document.',
+   milestones:[{label:'Concept directions',amount:'$1,500'},{label:'Final identity system',amount:'$4,500'},{label:'Guideline doc + assets',amount:'$2,500'}],
+   challengePrompt:'Portfolio-based review — no live test for this listing.',
+   views:132, shortlisted:2, avgBid:'$7,900', clientStatus:'Active 1h ago', clientStatusColor:'#0d9488', weekly:[1,2,2,3,2,1,2]},
+ {id:6,type:'startup',typeLabel:'Startup · Equity',title:'Growth Marketer — Early Traction Sprint',summary:'Seed-stage startup needs a growth lead for a 6-week user acquisition sprint.',budget:'0.3% Equity + $1,200',posted:'3d ago',trustScore:87,escrowFunded:true,hasChallenge:true,skills:['Growth','Paid Ads'],proposalsCount:4,
+   scope:'Run a 6-week acquisition sprint for a seed-stage consumer app, targeting a 3x increase in weekly signups.',
+   milestones:[{label:'Channel strategy',amount:'$400'},{label:'Campaign execution',amount:'$500'},{label:'Results report',amount:'$300'}],
+   challengePrompt:'Draft a 3-bullet acquisition channel plan for a given app in 4 minutes.',
+   views:88, shortlisted:2, avgBid:'$1,050', clientStatus:'Active 5h ago', clientStatusColor:'#d4a017', weekly:[1,2,1,3,2,2,3], equity:'0.3%'}
+];
+
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.state = {
+      screen:'onboarding', history:[], activeTab:'home', role:'freelancer',
+      kycFromProfile:false, profileAnswers:{},
+      listingFilter:'all', selectedGigId:null, bidAmount:'', equityInput:'',
+      proposalSubmitted:{}, challengeStarted:{},
+      nidUploaded:false, birthCertUploaded:false, depositPaid:false,
+      selectedMfs:'bKash',
+      customJobs:[], newJobTitle:'', newJobBudget:'', newJobScope:'', newJobChallengeEnabled:false, newJobChallengePrompt:'',
+      chatApplicantName:null, chatThreads:{}, chatDraft:''
+    };
+  }
+  navigate(screen){ this.setState(s=>({history:[...s.history, s.screen], screen})); }
+  goBack(){ this.setState(s=>{const h=s.history.slice(); const prev=h.pop()||'home'; return {history:h, screen:prev};}); }
+  goHome(){ this.setState({screen:'home', activeTab:'home', history:[]}); }
+  goProposals(){ this.setState({screen:'proposals', activeTab:'proposals', history:[]}); }
+  goVault(){ this.setState({screen:'vault', activeTab:'vault', history:[]}); }
+  goProfile(){ this.setState({screen:'profile', activeTab:'profile', history:[]}); }
+  startVerification(){ this.setState({screen:'profileSetup', history:[]}); }
+  updateProfileField(key,e){ this.setState(s=>({profileAnswers:{...s.profileAnswers, [key]:e.target.value}})); }
+  finishProfileSetup(){ this.setState({screen:'kyc', kycFromProfile:false}); }
+  goKycEdit(){ this.setState(s=>({history:[...s.history,s.screen], screen:'kyc', kycFromProfile:true})); }
+  selectRole(key){ this.setState(s=>({...s, role:key})); }
+  finishVerification(){
+    if(this.state.kycFromProfile){ this.goBack(); } else { this.goHome(); }
+  }
+  editProfile(){}
+  setListingFilter(f){ this.setState({listingFilter:f}); }
+  selectGig(id){ this.setState(s=>({history:[...s.history,s.screen], screen:'jobDetail', selectedGigId:id, bidAmount:''})); }
+  updateBidAmount(e){ this.setState({bidAmount:e.target.value}); }
+  submitProposal(id){ this.setState(s=>({proposalSubmitted:{...s.proposalSubmitted, [id]:true}})); }
+  startChallenge(id){ this.setState(s=>({challengeStarted:{...s.challengeStarted, [id]:true}})); }
+  toggleNid(){ this.setState(s=>({nidUploaded: !s.nidUploaded})); }
+  toggleBirthCert(){ this.setState(s=>({birthCertUploaded: !s.birthCertUploaded})); }
+  selectMfs(label){ this.setState({selectedMfs:label}); }
+  payDeposit(){ if(this.state.nidUploaded) this.setState({depositPaid:true}); }
+  withdrawFunds(){}
+  postNewJob(){ this.navigate('postJob'); }
+  updateEquityInput(e){ this.setState({equityInput:e.target.value}); }
+  updateNewJobTitle(e){ this.setState({newJobTitle:e.target.value}); }
+  updateNewJobBudget(e){ this.setState({newJobBudget:e.target.value}); }
+  updateNewJobScope(e){ this.setState({newJobScope:e.target.value}); }
+  toggleNewJobChallenge(){ this.setState(s=>({newJobChallengeEnabled: !s.newJobChallengeEnabled})); }
+  updateNewJobChallengePrompt(e){ this.setState({newJobChallengePrompt:e.target.value}); }
+  submitNewJob(){
+    const s=this.state;
+    const title=(s.newJobTitle||'').trim();
+    if(!title) return;
+    const typeMap = {client:'freelance', agency:'agency', startup:'startup'};
+    const typeLabelMap = {client:'Freelance', agency:'Agency', startup:'Startup · Equity'};
+    const newGig = {
+      id:'custom-'+Date.now(), type:typeMap[s.role]||'freelance', typeLabel:typeLabelMap[s.role]||'Freelance',
+      title, summary: (s.newJobScope||'').slice(0,110), budget: s.newJobBudget || 'Budget TBD', posted:'just now',
+      trustScore:96, escrowFunded:true, hasChallenge: s.newJobChallengeEnabled, skills:[],
+      scope: s.newJobScope || 'No scope details provided yet.',
+      milestones:[{label:'Milestone 1', amount:'TBD'}],
+      challengePrompt: s.newJobChallengeEnabled ? s.newJobChallengePrompt : '',
+      views:0, shortlisted:0, avgBid:'—', clientStatus:'Active now', clientStatusColor:'#0d9488', weekly:[0,0,0,0,0,0,0],
+      proposalsCount:0
+    };
+    this.setState(s2=>({customJobs:[...s2.customJobs, newGig], newJobTitle:'', newJobBudget:'', newJobScope:'', newJobChallengeEnabled:false, newJobChallengePrompt:'', screen:'home', activeTab:'home', history:[]}));
+  }
+  openChatWithApplicant(name){
+    this.setState(s=>{
+      const threads = {...s.chatThreads};
+      if(!threads[name]) threads[name] = [{from:'them', text:'Hi! Thanks for reviewing my proposal.'}];
+      return {history:[...s.history,s.screen], screen:'chat', chatApplicantName:name, chatThreads:threads, chatDraft:''};
+    });
+  }
+  updateChatDraft(e){ this.setState({chatDraft:e.target.value}); }
+  sendChatDraft(){
+    const text=(this.state.chatDraft||'').trim();
+    if(!text) return;
+    this.setState(s=>{
+      const threads={...s.chatThreads};
+      const name=s.chatApplicantName;
+      threads[name]=[...(threads[name]||[]), {from:'me', text}];
+      return {chatThreads:threads, chatDraft:''};
+    });
+  }
+
+  renderVals(){
+    const s = this.state;
+    const ALL_GIGS = GIGS.concat(s.customJobs);
+    const gig = ALL_GIGS.find(g=>g.id===s.selectedGigId) || ALL_GIGS[0];
+    const profile = PROFILE_BY_ROLE[s.role];
+
+    const roleOptions = ROLES.map(r=>({
+      label:r.label, desc:r.desc, select:()=>this.selectRole(r.key),
+      cardStyle:'display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-radius:12px;cursor:pointer;'+(s.role===r.key?'background:#eaf6f4;border:1px solid rgba(13,148,136,0.4)':'background:#fff;border:1px solid rgba(27,36,48,0.08)'),
+      dotStyle:'width:9px;height:9px;border-radius:50%;flex:none;'+(s.role===r.key?'background:#0d9488':'background:transparent;border:2px solid #c9cdd6')
+    }));
+
+    const roleLabelMap = {freelancer:'Freelancer',client:'Client',agency:'Agency',startup:'Startup'};
+    const roleBadgeText = roleLabelMap[s.role];
+    const roleBadgeStyle = 'font-size:10px;font-weight:600;color:#0d7d74;background:#eaf6f4;border:1px solid rgba(13,148,136,0.25);padding:5px 10px;border-radius:9px;white-space:nowrap';
+
+    const listingFilterDefs = [['all','All'],['freelance','Freelance'],['agency','Agency'],['startup','Startup']];
+    const listingFilters = listingFilterDefs.map(([k,label])=>({
+      key:k, label, select:()=>this.setListingFilter(k),
+      chipStyle:'flex:none;white-space:nowrap;padding:7px 13px;border-radius:20px;font-size:11.5px;font-weight:500;cursor:pointer;'+(s.listingFilter===k?'background:#1c2534;color:#fff':'background:#f2f0ea;color:#5b6472;border:1px solid rgba(27,36,48,0.08)')
+    }));
+
+    const filteredGigs = ALL_GIGS.filter(g=> s.listingFilter==='all' || g.type===s.listingFilter).map(g=>({
+      id:g.id, title:g.title, summary:g.summary, budget:g.budget, trustScore:g.trustScore,
+      escrowFunded:g.escrowFunded, hasChallenge:g.hasChallenge, typeLabel:g.typeLabel,
+      typeTagStyle:'display:inline-block;font-size:10px;font-weight:600;color:#8659c9;background:#f1eafb;padding:4px 9px;border-radius:8px',
+      skills: g.skills.map(name=>({name})),
+      select:()=>this.selectGig(g.id)
+    }));
+
+    const submitted = !!s.proposalSubmitted[gig.id];
+    const challengeDone = !!s.challengeStarted[gig.id];
+
+    const maxWeekly = Math.max(1, ...(gig.weekly||[1]));
+    const selectedGig = {
+      typeLabel:gig.typeLabel, title:gig.title, budget:gig.budget, posted:gig.posted, trustScore:gig.trustScore,
+      scope:gig.scope, milestones:gig.milestones, challengePrompt:gig.challengePrompt,
+      typeTagStyle:'display:inline-block;font-size:10.5px;font-weight:600;color:#8659c9;background:#f1eafb;padding:5px 10px;border-radius:9px',
+      applicantsCount: gig.proposalsCount || 0,
+      clientStatusText: gig.clientStatus, clientStatusStyle:'font-size:11px;font-weight:600;color:'+gig.clientStatusColor+';background:'+gig.clientStatusColor+'1a;padding:5px 10px;border-radius:9px',
+      views: gig.views, shortlisted: gig.shortlisted, avgBid: gig.avgBid,
+      chartBars: (gig.weekly||[]).map((v,i)=>({heightPct: Math.round((v/maxWeekly)*100), label:['M','T','W','T','F','S','S'][i]})),
+      hasEquity: !!gig.equity, equityDefault: gig.equity || '',
+      applicants: (APPLICANTS_BY_GIG[gig.id]||[]).map(ap=>({
+        name: ap.name, bid: ap.bid, trustScore: ap.trustScore,
+        challengeLabel: ap.challengeDone ? 'Challenge Passed' : (ap.reviewNote ? 'Portfolio Review' : 'Challenge Not Taken'),
+        challengeStyle: 'font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:8px;'+(ap.challengeDone?'color:#0d9488;background:#eaf6f4':(ap.reviewNote?'color:#2f5fa8;background:#eaf0fa':'color:#b8382f;background:#fbe9e7')),
+        hasAnswer: !!(ap.answer || ap.reviewNote), answerText: ap.answer || ap.reviewNote,
+        canMessage: !!(ap.challengeDone || ap.reviewNote),
+        openChat: ()=>this.openChatWithApplicant(ap.name)
+      }))
+    };
+    const isPostJob = s.screen==='postJob';
+    const isChat = s.screen==='chat';
+    const chatMessages = (s.chatThreads[s.chatApplicantName]||[]).map(m=>({
+      text:m.text,
+      rowStyle:'display:flex;'+(m.from==='me'?'justify-content:flex-end':'justify-content:flex-start'),
+      bubbleStyle:'max-width:75%;font-size:12.5px;line-height:1.5;padding:10px 13px;border-radius:14px;'+(m.from==='me'?'background:#1c2534;color:#f7f5f0;border-bottom-right-radius:4px':'background:#fff;color:#1b2430;border:1px solid rgba(27,36,48,0.08);border-bottom-left-radius:4px')
+    }));
+
+    const vaultLocked = !s.depositPaid;
+    const vaultStatusText = vaultLocked ? 'Locked' : 'Withdrawable';
+    const vaultDotColor = vaultLocked ? '#d4a017' : '#0d9488';
+
+    const mfsOptions = ['bKash','Nagad','PayPal','Bank'].map(label=>({
+      label, select:()=>this.selectMfs(label),
+      chipStyle:'flex:1;text-align:center;font-size:11px;font-weight:600;padding:9px 4px;border-radius:9px;cursor:pointer;'+(s.selectedMfs===label?'background:#0d9488;color:#fff':'background:#fff;color:#5b6472;border:1px solid rgba(27,36,48,0.1)')
+    }));
+
+    const showDepositStep = s.role==='freelancer';
+    const kycStepTotal = showDepositStep ? 2 : 1;
+    const kycStepNum = 1;
+
+    const roleToListingType = {client:'freelance', agency:'agency', startup:'startup'};
+    const isBrowseHome = s.role==='freelancer';
+    const isDashboardHome = !isBrowseHome;
+    const isAgencyRole = s.role==='agency';
+    const isStartupRole = s.role==='startup';
+    const myListings = ALL_GIGS.filter(g=>g.type===roleToListingType[s.role]).map(g=>({
+      id:g.id, title:g.title, budget:g.budget, escrowFunded:g.escrowFunded, typeLabel:g.typeLabel, proposalsCount:g.proposalsCount,
+      typeTagStyle:'display:inline-block;font-size:10px;font-weight:600;color:#8659c9;background:#f1eafb;padding:4px 9px;border-radius:8px',
+      select:()=>this.selectGig(g.id)
+    }));
+    const dashActiveListings = myListings.length;
+    const dashEscrowFunded = '$'+(myListings.reduce((sum,g)=>sum + (parseInt((g.budget||'0').replace(/[^0-9]/g,''))||0),0)).toLocaleString();
+    const dashProposalsReceived = myListings.reduce((sum,g)=>sum+(g.proposalsCount||0),0);
+    const teamMembers = TEAM_MEMBERS;
+
+    const isReviewerRole = s.role==='client' || s.role==='agency' || s.role==='startup';
+    const proposalsHeading = isReviewerRole ? 'Proposal Queue' : 'My Proposals';
+    const proposalItems = isReviewerRole ? [
+      {title:'Design a Flutter Onboarding Flow',note:'From a verified freelancer · 98% trust score · relevant portfolio attached',amount:'$430 bid',time:'10m ago',statusText:'Passed Filter',statusStyle:'font-size:10px;font-weight:600;color:#0d9488;background:#eaf6f4;padding:3px 8px;border-radius:8px'},
+      {title:'Design a Flutter Onboarding Flow',note:'Generic copy-paste proposal detected — no project-specific details',amount:'$150 bid',time:'32m ago',statusText:'Flagged Spam',statusStyle:'font-size:10px;font-weight:600;color:#b8382f;background:#fbe9e7;padding:3px 8px;border-radius:8px'},
+      {title:'Full Backend Rebuild for Logistics SaaS',note:'Agency with 3 verified engineers, prior escrow history',amount:'$11,200 bid',time:'2h ago',statusText:'Passed Filter',statusStyle:'font-size:10px;font-weight:600;color:#0d9488;background:#eaf6f4;padding:3px 8px;border-radius:8px'}
+    ] : [
+      {title:gig.title,note: submitted? 'Awaiting client review' : 'Not yet submitted — open the job to bid',amount: s.bidAmount? '$'+s.bidAmount : gig.budget, time:'just now',statusText: submitted?'Submitted':'Draft', statusStyle:'font-size:10px;font-weight:600;color:'+(submitted?'#0d9488':'#5b6472')+';background:'+(submitted?'#eaf6f4':'#f2f0ea')+';padding:3px 8px;border-radius:8px'},
+      {title:'Write 10 SEO Blog Posts for SaaS Startup',note:'Milestone 1 in progress, escrow funded',amount:'$600',time:'1d ago',statusText:'Active',statusStyle:'font-size:10px;font-weight:600;color:#2f5fa8;background:#eaf0fa;padding:3px 8px;border-radius:8px'},
+      {title:'Brand Identity for Retail Chain Relaunch',note:'Final milestone delivered, awaiting payout release',amount:'$8,500',time:'4d ago',statusText:'Completed',statusStyle:'font-size:10px;font-weight:600;color:#0d9488;background:#eaf6f4;padding:3px 8px;border-radius:8px'}
+    ];
+
+    const transactions = [
+      {label:'Escrow release — Blog Posts job',time:'2d ago',amount:'+$540.00',amountStyle:'font-size:12.5px;font-weight:600;color:#0d9488'},
+      {label:'Platform maintenance fee (2%)',time:'2d ago',amount:'-$10.80',amountStyle:'font-size:12.5px;font-weight:600;color:#8a92a0'},
+      {label:'Withdrawal to bKash',time:'5d ago',amount:'-$300.00',amountStyle:'font-size:12.5px;font-weight:600;color:#1b2430'}
+    ];
+
+    const tabStyle = (name)=>({
+      shape: 'width:20px;height:20px;border-radius:'+(name==='home'?'5px':'50%')+';background:'+(s.activeTab===name?'#1c2534':'transparent')+';border:2px solid '+(s.activeTab===name?'#1c2534':'#aab2c0'),
+      text: 'font-size:10px;font-weight:600;color:'+(s.activeTab===name?'#1c2534':'#aab2c0')
+    });
+    const tHome=tabStyle('home'), tProp=tabStyle('proposals'), tVault=tabStyle('vault'), tProf=tabStyle('profile');
+
+    return {
+      isOnboarding: s.screen==='onboarding', isKyc: s.screen==='kyc', isHome: s.screen==='home', isJobDetail: s.screen==='jobDetail',
+      isProposals: s.screen==='proposals', isVault: s.screen==='vault', isProfile: s.screen==='profile',
+      showTabBar: ['home','proposals','vault','profile'].includes(s.screen),
+      roleOptions, startVerification: ()=>this.startVerification(),
+      roleBadgeText, roleBadgeStyle,
+      kycShowBack: s.kycFromProfile, kycStepNum, kycStepTotal,
+      kycProgressStyle:'height:100%;border-radius:3px;width:'+(s.depositPaid?100:(s.nidUploaded?60:20))+'%;background:#0d9488',
+      showDepositStep,
+      nidRowStyle:'display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:12px;padding:13px 14px;cursor:pointer',
+      bcRowStyle:'display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:12px;padding:13px 14px;cursor:pointer',
+      nidStatusText: s.nidUploaded? 'Verified' : 'Upload',
+      nidStatusStyle:'font-size:10.5px;font-weight:600;padding:5px 10px;border-radius:8px;'+(s.nidUploaded?'color:#0d9488;background:#eaf6f4':'color:#5b6472;background:#f2f0ea'),
+      bcStatusText: s.birthCertUploaded? 'Uploaded' : 'Upload',
+      bcStatusStyle:'font-size:10.5px;font-weight:600;padding:5px 10px;border-radius:8px;'+(s.birthCertUploaded?'color:#0d9488;background:#eaf6f4':'color:#5b6472;background:#f2f0ea'),
+      toggleNid: ()=>this.toggleNid(), toggleBirthCert: ()=>this.toggleBirthCert(),
+      depositPillText: s.depositPaid? 'Locked · Refundable' : (s.nidUploaded? 'Ready to Pay' : 'Verify ID First'),
+      depositPillStyle:'font-size:10.5px;font-weight:600;padding:5px 10px;border-radius:8px;'+(s.depositPaid?'color:#d4a017;background:#fbf1de':'color:#8a92a0;background:#f2f0ea'),
+      depositNote: s.depositPaid? 'Your deposit is securely locked and becomes fully withdrawable after your first completed job.' : 'Complete NID verification, then pay your refundable $20 deposit to unlock full freelancer access.',
+      mfsOptions, payDeposit: ()=>this.payDeposit(),
+      depositButtonText: s.depositPaid? 'Deposit Locked ✓' : 'Pay $20 Deposit',
+      depositButtonStyle:'text-align:center;padding:13px;border-radius:11px;font-weight:700;font-size:13px;cursor:pointer;'+(s.depositPaid?'background:#fbf1de;color:#d4a017;border:1px solid rgba(212,160,23,0.3)':(s.nidUploaded?'background:#1c2534;color:#fff':'background:#f2f0ea;color:#8a92a0')),
+      kycFinishButtonText: showDepositStep ? (s.depositPaid? 'Continue' : (s.nidUploaded? 'Skip Deposit For Now' : 'Continue')) : 'Continue',
+      kycFinishButtonStyle:'text-align:center;padding:15px;border-radius:12px;font-weight:700;font-size:13.5px;cursor:pointer;background:#1c2534;color:#f7f5f0;margin-top:4px',
+      finishVerification: ()=>this.finishVerification(),
+      goHome:()=>this.goHome(), goProposals:()=>this.goProposals(), goVault:()=>this.goVault(), goProfile:()=>this.goProfile(),
+      goKycEdit:()=>this.goKycEdit(), goBack:()=>this.goBack(),
+      showVaultBar: s.role==='freelancer', vaultStatusText, vaultDotColor,
+      isBrowseHome, isDashboardHome, isAgencyRole, isStartupRole, myListings, dashActiveListings, dashEscrowFunded, dashProposalsReceived, teamMembers,
+      postNewJob: ()=>this.postNewJob(),
+      listingFilters, filteredGigs, selectedGig,
+      challengeButtonText: challengeDone? 'Challenge Completed ✓' : 'Start 4-Minute Challenge',
+      challengeButtonStyle:'text-align:center;padding:11px;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer;'+(challengeDone?'background:#eaf6f4;color:#0d9488;border:1px solid rgba(13,148,136,0.3)':'background:#8659c9;color:#fff'),
+      startChallenge: ()=>this.startChallenge(gig.id),
+      bidAmount: s.bidAmount, updateBidAmount:(e)=>this.updateBidAmount(e),
+      submitProposal: ()=>this.submitProposal(gig.id),
+      submitProposalText: submitted? 'Proposal Submitted ✓' : 'Submit Proposal',
+      submitProposalStyle:'text-align:center;padding:15px;border-radius:12px;font-weight:700;font-size:13.5px;cursor:pointer;'+(submitted?'background:#eaf6f4;color:#0d9488;border:1px solid rgba(13,148,136,0.3)':'background:#1c2534;color:#fff'),
+      isFreelancerView: !isReviewerRole, isOwnerView: isReviewerRole,
+      isPostJob, isChat,
+      newJobTitle: s.newJobTitle, updateNewJobTitle:(e)=>this.updateNewJobTitle(e),
+      newJobBudget: s.newJobBudget, updateNewJobBudget:(e)=>this.updateNewJobBudget(e),
+      newJobScope: s.newJobScope, updateNewJobScope:(e)=>this.updateNewJobScope(e),
+      newJobChallengeEnabled: s.newJobChallengeEnabled, toggleNewJobChallenge:()=>this.toggleNewJobChallenge(),
+      newJobChallengeToggleLabel: s.newJobChallengeEnabled ? 'Enabled' : 'Add Challenge',
+      newJobChallengePrompt: s.newJobChallengePrompt, updateNewJobChallengePrompt:(e)=>this.updateNewJobChallengePrompt(e),
+      challengeToggleStyle:'display:inline-block;padding:9px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;'+(s.newJobChallengeEnabled?'background:#8659c9;color:#fff':'background:#fff;color:#5b6472;border:1px solid rgba(27,36,48,0.1)'),
+      submitNewJob: ()=>this.submitNewJob(),
+      chatApplicantName: s.chatApplicantName, chatMessages,
+      chatDraft: s.chatDraft, updateChatDraft:(e)=>this.updateChatDraft(e), sendChatDraft:()=>this.sendChatDraft(),
+      isReviewerRole, spamBlockedCount:23, proposalsHeading, proposalItems,
+      equityInput: s.equityInput, updateEquityInput:(e)=>this.updateEquityInput(e),
+      isProfileSetup: s.screen==='profileSetup', finishProfileSetup: ()=>this.finishProfileSetup(),
+      profileQuestions: (PROFILE_QUESTIONS_BY_ROLE[s.role]||[]).map(q=>({
+        key:q.key, label:q.label, placeholder:q.placeholder, multiline: !!q.multiline, isText: !q.multiline,
+        value: s.profileAnswers[q.key] || '', update: (e)=>this.updateProfileField(q.key,e)
+      })),
+      walletBalance:'$1,240.50',
+      vaultCardStyle:'background:#fff;border:1px solid rgba(27,36,48,0.08);border-radius:16px;padding:16px',
+      vaultStatusPillStyle:'font-size:10px;font-weight:600;padding:4px 9px;border-radius:8px;'+(vaultLocked?'color:#d4a017;background:#fbf1de':'color:#0d9488;background:#eaf6f4'),
+      vaultDescription: vaultLocked? 'Refundable deposit — unlocks for withdrawal after your first successful job completion.' : 'Fully withdrawable. Great work on your first completed job!',
+      payoutMethods: mfsOptions, withdrawFunds: ()=>this.withdrawFunds(), transactions,
+      profileName: s.profileAnswers.fullName || profile.name, profileTitle: s.profileAnswers.title || profile.title, profileLocation: s.profileAnswers.location || profile.location, profileBio: s.profileAnswers.bio || profile.bio,
+      profileSkills: profile.skills.map(name=>({name})),
+      statJobSuccess: profile.jobSuccess, statEarned: profile.earned, statJobsDone: profile.jobsDone,
+      portfolioItems: [1,2,3].map(n=>({label:'Project '+n})),
+      reviews: profile.reviews, editProfile: ()=>this.editProfile(),
+      tabHomeShape: tHome.shape, tabHomeText: tHome.text,
+      tabProposalsShape: tProp.shape, tabProposalsText: tProp.text,
+      tabVaultShape: tVault.shape, tabVaultText: tVault.text,
+      tabProfileShape: tProf.shape, tabProfileText: tProf.text
+    };
+  }
+}
+
+</script>
+</body>
+</html>
