@@ -1,0 +1,13 @@
+# Copy to android/key.properties and fill in. NEVER commit the real file.
+#
+# Generate a keystore once and keep it safe — Android will refuse to install
+# an update signed with a different key, so losing it means every existing
+# install is stranded and users must uninstall/reinstall:
+#
+#   keytool -genkey -v -keystore ~/felicek-release.jks \
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias felicek
+#
+storePassword=your-keystore-password
+keyPassword=your-key-password
+keyAlias=felicek
+storeFile=/absolute/path/to/felicek-release.jks

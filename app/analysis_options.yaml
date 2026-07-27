@@ -1,0 +1,30 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    # Treat unused code as an error so dead code never reaches a release build.
+    unused_import: error
+    unused_local_variable: error
+    unused_element: error
+  exclude:
+    - "**/*.g.dart"
+    - "**/firebase_options.dart"
+
+linter:
+  rules:
+    - always_declare_return_types
+    - avoid_empty_else
+    - avoid_print
+    - avoid_relative_lib_imports
+    - await_only_futures
+    - cancel_subscriptions
+    - close_sinks
+    - directives_ordering
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_final_locals
+    # `require_trailing_commas` is deliberately omitted: it fights `dart
+    # format`, which collapses short argument lists the lint then re-flags.
+    - sort_child_properties_last
+    - unnecessary_await_in_return
+    - use_super_parameters

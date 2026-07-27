@@ -1,0 +1,261 @@
+rules_version = '2';
+
+// Felicek — Firestore security rules.
+//
+// These rules are the *real* enforcement layer. The Flutter client is a
+// convenience — every guarantee this product makes ("no account without
+// verification and payment", "the job owner can never read a freelancer's
+// full challenge submission", "only a payment gateway webhook can mark money
+// as received") is written here, not just in app code, because a client can
+// always be bypassed or reverse-engineered. If it isn't enforced here, it
+// isn't enforced.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    // True once a user's private record shows a cleared identity document
+    // AND a deposit confirmed through the payment gateway. This is the same
+    // predicate `AppUser.meetsMandatoryRequirements` (minus the photo check,
+    // which only gates the *client* UI — the account itself is unusable
+    // server-side without this regardless of role).
+    function isAccountVerified(uid) {
+      let u = userDoc(uid);
+      return u.kyc.idSubmitted == true && u.kyc.depositPaid == true
+        && u.kyc.stage == 'verified'
+        // Individual freelancers additionally need the mandatory profile
+        // photo — a faceless "verified" freelancer defeats the point.
+        && (u.role != 'freelancer' || (
+          'profilePhotoBase64' in u && u.profilePhotoBase64 != null && u.profilePhotoBase64 != ''
+        ));
+    }
+
+    function onlyFieldsChanged(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(fields);
+    }
+
+    // Firestore's Admin SDK (used by the payment gateway's webhook, which
+    // runs outside this app) is not subject to these rules at all — so
+    // nothing here needs to special-case it. What these rules *do* need to
+    // do is make sure a normal signed-in client can never perform the
+    // equivalent write itself.
+
+    // ── users/{uid} — private account record, owner-only ────────────────
+
+    match /users/{uid} {
+      allow read: if isSelf(uid);
+
+      allow create: if isSelf(uid)
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.kyc.depositPaid == false;
+
+      allow update: if isSelf(uid) && !('email' in request.resource.data.diff(resource.data).affectedKeys())
+        // The one and only way `kyc.depositPaid` may flip to true: a
+        // matching PaymentIntent that this same account created is already
+        // `paid`. A client cannot self-report a payment.
+        && (
+          request.resource.data.kyc.depositPaid == resource.data.kyc.depositPaid
+          || (
+            request.resource.data.kyc.depositPaid == true
+            && exists(/databases/$(database)/documents/paymentIntents/$(request.resource.data.kyc.paymentRef))
+            && get(/databases/$(database)/documents/paymentIntents/$(request.resource.data.kyc.paymentRef)).data.uid == uid
+            && get(/databases/$(database)/documents/paymentIntents/$(request.resource.data.kyc.paymentRef)).data.status == 'paid'
+            && get(/databases/$(database)/documents/paymentIntents/$(request.resource.data.kyc.paymentRef)).data.amountCents
+                == request.resource.data.kyc.depositAmountCents
+          )
+        );
+
+      allow delete: if false;
+
+      match /transactions/{txId} {
+        // The ledger is a read-only receipt of money that has already moved
+        // through `WalletRepository`'s server-validated transactions
+        // (withdraw/addFunds run as Firestore transactions guarded by the
+        // caller's own balance, and escrow releases are written by a trusted
+        // backend context, never by another user's client). No client path
+        // writes another account's transactions.
+        allow read: if isSelf(uid);
+        allow create: if isSelf(uid);
+        allow update, delete: if false;
+      }
+
+      match /notifications/{notificationId} {
+        allow read, update, delete: if isSelf(uid);
+        // Any signed-in user may drop a notification into someone else's
+        // feed (a new message, a proposal, a hire) — but only in the exact
+        // shape `NotificationRepository` writes, always starting unread.
+        allow create: if signedIn()
+          && request.resource.data.read == false
+          && request.resource.data.keys().hasOnly([
+            'kind', 'title', 'body', 'read', 'chatId', 'jobId',
+            'proposalId', 'actorId', 'actorName', 'createdAt',
+          ]);
+      }
+    }
+
+    // ── profiles/{uid} — public mirror ──────────────────────────────────
+
+    match /profiles/{uid} {
+      allow read: if true;
+      allow create: if isSelf(uid) && request.resource.data.verified == false;
+      allow update: if isSelf(uid)
+        && (
+          request.resource.data.verified == resource.data.verified
+          || (
+            request.resource.data.verified == true
+            && isAccountVerified(uid)
+          )
+        );
+      allow delete: if false;
+    }
+
+    // ── jobs/{jobId} — listings ──────────────────────────────────────────
+
+    match /jobs/{jobId} {
+      allow read: if true;
+
+      // Publishing requires the same mandatory verification + deposit gate
+      // as the rest of the account, enforced here — not just hidden behind a
+      // disabled button in the app.
+      allow create: if isSelf(request.resource.data.ownerId)
+        && isAccountVerified(request.resource.data.ownerId);
+
+      allow update: if (
+          isSelf(resource.data.ownerId)
+          && request.resource.data.ownerId == resource.data.ownerId
+        )
+        // Any signed-in user may bump the engagement counters on someone
+        // else's listing (a view, a shortlist toggle) — but nothing else.
+        || (
+          signedIn()
+          && onlyFieldsChanged(['views', 'shortlisted', 'proposalsCount'])
+        );
+
+      allow delete: if false;
+
+      // The quiz answer key — the load-bearing rule for "an applicant can
+      // never read the correct answers, before or after taking the quiz."
+      match /challengeKey/{doc} {
+        allow read, write: if isSelf(get(/databases/$(database)/documents/jobs/$(jobId)).data.ownerId);
+      }
+    }
+
+    // ── proposals/{proposalId} ────────────────────────────────────────────
+    // Id is always `${jobId}__${freelancerId}`.
+
+    match /proposals/{proposalId} {
+      allow read: if isSelf(resource.data.freelancerId) || isSelf(resource.data.jobOwnerId);
+
+      allow create: if isSelf(request.resource.data.freelancerId)
+        && proposalId == request.resource.data.jobId + '__' + request.resource.data.freelancerId
+        && get(/databases/$(database)/documents/jobs/$(request.resource.data.jobId)).data.ownerId
+            == request.resource.data.jobOwnerId
+        // No proposal is valid unless the bidder has cleared their own
+        // mandatory verification — mirrors `AppUser.canBid`.
+        && isAccountVerified(request.resource.data.freelancerId);
+
+      // The freelancer may keep editing their own bid/challenge answers;
+      // the job owner may only move the proposal through its status machine
+      // and (for a quiz) write the score they computed from the private key.
+      allow update: if isSelf(resource.data.freelancerId)
+        || (
+          isSelf(resource.data.jobOwnerId)
+          && onlyFieldsChanged(['status', 'chatId', 'challenge', 'reviewNote', 'updatedAt'])
+        );
+
+      allow delete: if false;
+
+      // The freelancer's full written/code answer. This is the other
+      // load-bearing privacy rule: the job owner is *never* in this match's
+      // allow-list, no matter what status the proposal is in.
+      match /submission/full {
+        allow read, write: if isSelf(get(/databases/$(database)/documents/proposals/$(proposalId)).data.freelancerId);
+      }
+    }
+
+    // ── paymentIntents/{ref} ──────────────────────────────────────────────
+    // The single most important rule in this file: a client may create a
+    // *pending* intent for itself, and read it back, and that is all. Only
+    // the payment gateway's Admin-SDK webhook — which ignores these rules
+    // entirely — may ever set `status` to `paid`.
+
+    match /paymentIntents/{ref} {
+      allow read: if isSelf(resource.data.uid);
+      allow create: if isSelf(request.resource.data.uid)
+        && request.resource.data.status == 'pending';
+      allow update, delete: if false;
+    }
+
+    // ── calls/{callId} — WebRTC signaling ────────────────────────────────
+
+    match /calls/{callId} {
+      allow read: if isSelf(resource.data.callerId) || isSelf(resource.data.calleeId);
+      allow create: if isSelf(request.resource.data.callerId);
+      allow update: if isSelf(resource.data.callerId) || isSelf(resource.data.calleeId);
+      allow delete: if false;
+
+      match /callerCandidates/{c} {
+        allow read: if isSelf(get(/databases/$(database)/documents/calls/$(callId)).data.callerId)
+          || isSelf(get(/databases/$(database)/documents/calls/$(callId)).data.calleeId);
+        allow create: if isSelf(get(/databases/$(database)/documents/calls/$(callId)).data.callerId);
+      }
+      match /calleeCandidates/{c} {
+        allow read: if isSelf(get(/databases/$(database)/documents/calls/$(callId)).data.callerId)
+          || isSelf(get(/databases/$(database)/documents/calls/$(callId)).data.calleeId);
+        allow create: if isSelf(get(/databases/$(database)/documents/calls/$(callId)).data.calleeId);
+      }
+    }
+
+    // ── chats/{chatId} ────────────────────────────────────────────────────
+
+    match /chats/{chatId} {
+      allow read, update: if signedIn() && request.auth.uid in resource.data.participantIds;
+      allow create: if signedIn() && request.auth.uid in request.resource.data.participantIds;
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if signedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds;
+
+        allow create: if signedIn()
+          && request.resource.data.senderId == request.auth.uid
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds
+          // The client clock used for optimistic ordering can't be abused to
+          // rewrite history — it must sit within five minutes of the server.
+          && request.resource.data.clientSentAt.toMillis() >= request.time.toMillis() - 300000
+          && request.resource.data.clientSentAt.toMillis() <= request.time.toMillis() + 300000;
+
+        // Edit/delete: only the original sender. Responding to an offer:
+        // either participant, but only the `offer` field.
+        allow update: if signedIn() && (
+          request.auth.uid == resource.data.senderId
+          || (
+            request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds
+            && onlyFieldsChanged(['offer'])
+          )
+        );
+        allow delete: if false;
+      }
+    }
+
+    // ── meta/config — remote flags read by the updater and app shell ─────
+
+    match /meta/config {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "_comment": "Release manifest polled by the in-app updater (UpdateService). CI rewrites this file on every release — see .github/workflows/release.yml. versionCode is the ONLY field compared; it must increase monotonically. sha256 is verified before the APK is ever handed to the package installer.",
+  "versionCode": 1,
+  "versionName": "1.0.0",
+  "apkUrl": "https://github.com/Taki-Al-Zaki-NASC/Felicek/releases/download/v1.0.0/felicek-1.0.0.apk",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "sizeBytes": 0,
+  "releaseNotes": "First release.",
+  "mandatory": false,
+  "minSupportedVersionCode": 0,
+  "rolloutPercent": 100,
+  "publishedAt": "2026-01-01T00:00:00Z"
+}

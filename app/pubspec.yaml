@@ -1,0 +1,81 @@
+name: felicek
+description: >-
+  Felicek — verified freelance marketplace with escrow, live skill challenges
+  and real-time messaging. Android client.
+publish_to: "none"
+
+# version: <semver>+<androidVersionCode>
+# The build number (after `+`) is the Android versionCode and MUST increase on
+# every release — the in-app updater compares it against update.json.
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # --- Firebase (Spark / free tier only: Auth + Firestore) ---
+  firebase_core: ^4.1.1
+  firebase_auth: ^6.1.0
+  cloud_firestore: ^6.0.2
+
+  # --- State ---
+  provider: ^6.1.2
+
+  # --- Platform / storage ---
+  shared_preferences: ^2.3.3
+  path_provider: ^2.1.5
+  package_info_plus: ^8.1.2
+
+  # --- Self-hosted APK auto-update ---
+  http: ^1.2.2
+  crypto: ^3.0.6
+
+  # --- Real-time audio/video calls (WebRTC, free STUN) ---
+  flutter_webrtc: ^1.4.0
+  permission_handler: ^12.0.0+1
+
+  # --- Profile photos ---
+  image_picker: ^1.1.2
+  image: ^4.3.0
+
+  # --- External payment gateway hand-off ---
+  url_launcher: ^6.3.1
+
+  # --- Misc ---
+  intl: ^0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/
+
+  fonts:
+    # Body / UI typeface used across the whole product.
+    - family: IBMPlexSans
+      fonts:
+        - asset: assets/fonts/IBMPlexSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/IBMPlexSans-Bold.ttf
+          weight: 700
+    # Editorial serif used for the wordmark, job titles and screen titles.
+    - family: Newsreader
+      fonts:
+        - asset: assets/fonts/Newsreader-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Newsreader-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Newsreader-Bold.ttf
+          weight: 700

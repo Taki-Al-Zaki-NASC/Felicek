@@ -1,0 +1,57 @@
+# ── Flutter / Dart ────────────────────────────────────────────────────────
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/.packages
+app/**/generated_plugin_registrant.*
+app/**/GeneratedPluginRegistrant.*
+.pub-cache/
+.pub/
+*.iml
+
+# ── Secrets: never commit ────────────────────────────────────────────────
+# Signing keys. Losing these strands every existing install; leaking them
+# lets anyone ship a "Felicek update" your users' phones will accept.
+app/android/key.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+
+# Per-project Firebase config.
+app/android/app/google-services.json
+app/ios/Runner/GoogleService-Info.plist
+app/macos/Runner/GoogleService-Info.plist
+firebase/.firebaserc
+.firebase/
+
+# ── Android ───────────────────────────────────────────────────────────────
+app/android/.gradle/
+app/android/local.properties
+app/android/app/debug/
+app/android/app/profile/
+app/android/app/release/
+app/android/captures/
+
+# ── iOS / macOS ───────────────────────────────────────────────────────────
+app/ios/Pods/
+app/ios/.symlinks/
+app/ios/Flutter/Flutter.framework
+app/ios/Flutter/Flutter.podspec
+app/ios/Flutter/ephemeral/
+app/macos/Pods/
+app/macos/Flutter/ephemeral/
+**/Podfile.lock
+**/xcuserdata/
+**/DerivedData/
+
+# ── Windows ───────────────────────────────────────────────────────────────
+app/windows/flutter/ephemeral/
+
+# ── Editors / OS ──────────────────────────────────────────────────────────
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Scopes exactly what the FileProvider will hand out. The updater writes to
+  <app-private files>/updates, so that is the only path exposed — a broader
+  root would let any component share arbitrary app-private files.
+-->
+<paths>
+    <files-path name="app_updates" path="updates/"/>
+    <cache-path name="app_update_cache" path="updates/"/>
+</paths>

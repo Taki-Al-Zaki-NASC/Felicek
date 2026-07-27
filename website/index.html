@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Felicek — Verified talent. Zero spam. Fair fees, always.</title>
+<meta name="description" content="Felicek is a verified freelance marketplace with escrow, live skill challenges and built-in calling. Download the Android app.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+  :root{
+    --canvas:#f7f5f0; --backdrop:#e9e6df; --surface:#fff;
+    --ink:#1b2430; --ink-strong:#1c2534; --muted:#5b6472; --faint:#8a92a0;
+    --teal:#0d9488; --teal-deep:#0d7d74; --teal-tint:#eaf6f4;
+    --violet:#8659c9; --violet-tint:#f1eafb;
+    --blue:#2f5fa8; --blue-tint:#eaf0fa;
+    --border:rgba(27,36,48,.08); --border-strong:rgba(27,36,48,.12);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--backdrop);color:var(--ink);
+       font-family:'IBM Plex Sans',system-ui,sans-serif;line-height:1.6}
+  a{color:var(--teal-deep);text-decoration:none}
+  a:hover{color:#0a5f58}
+  .wrap{max-width:940px;margin:0 auto;padding:0 20px}
+  header{padding:22px 0}
+  .brand{display:flex;align-items:center;gap:10px;font-family:'Newsreader',serif;
+         font-size:22px;font-weight:600}
+  .mark{width:34px;height:34px;border-radius:9px;background:var(--ink-strong);
+        display:flex;align-items:center;justify-content:center}
+  .mark span{width:14px;height:14px;border-radius:50%;border:2.5px solid var(--canvas)}
+  .hero{background:var(--canvas);border:1px solid var(--border);border-radius:22px;
+        padding:52px 32px;margin:12px 0 24px;text-align:center}
+  h1{font-family:'Newsreader',serif;font-size:clamp(30px,5vw,46px);font-weight:600;
+     letter-spacing:-.5px;margin:0 0 12px;line-height:1.15}
+  .sub{color:var(--muted);font-size:16px;max-width:520px;margin:0 auto 28px}
+  .cta{display:inline-flex;align-items:center;gap:10px;background:var(--ink-strong);
+       color:var(--canvas);padding:16px 26px;border-radius:13px;font-weight:700;font-size:15px}
+  .cta:hover{color:#fff;opacity:.92}
+  .meta{margin-top:14px;font-size:12.5px;color:var(--faint)}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:26px}
+  .pill{font-size:12px;font-weight:600;padding:6px 12px;border-radius:9px}
+  .pill.t{color:var(--teal);background:var(--teal-tint)}
+  .pill.v{color:var(--violet);background:var(--violet-tint)}
+  .pill.b{color:var(--blue);background:var(--blue-tint)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:24px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px}
+  .card h3{font-family:'Newsreader',serif;font-size:17px;font-weight:600;margin:0 0 6px}
+  .card p{margin:0;font-size:13.5px;color:var(--muted)}
+  .steps{background:var(--surface);border:1px solid var(--border);border-radius:16px;
+         padding:24px;margin-bottom:24px}
+  .steps h2{font-family:'Newsreader',serif;font-size:20px;font-weight:600;margin:0 0 14px}
+  ol{margin:0;padding-left:20px;font-size:14px;color:var(--muted)}
+  ol li{margin-bottom:8px}
+  ol li strong{color:var(--ink)}
+  .note{background:var(--teal-tint);border:1px solid rgba(13,148,136,.25);
+        border-radius:12px;padding:14px 16px;font-size:13px;color:#0a5f58;margin-top:16px}
+  footer{padding:28px 0 40px;text-align:center;font-size:12.5px;color:var(--faint)}
+  footer a{margin:0 8px}
+  code{background:var(--backdrop);padding:2px 6px;border-radius:5px;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand"><span class="mark"><span></span></span> Felicek</div>
+  </header>
+
+  <section class="hero">
+    <h1>Verified talent.<br>Zero spam. Fair fees, always.</h1>
+    <p class="sub">
+      Every account is identity-verified and deposit-backed before it can post
+      or bid. Escrow-funded milestones, live skill challenges, built-in calling,
+      and a flat 1–2% maintenance fee — nothing hidden.
+    </p>
+
+    <a class="cta" id="download" href="#" download>
+      ⬇ Download for Android
+    </a>
+    <div class="meta" id="release-meta">Loading latest release…</div>
+
+    <div class="pills">
+      <span class="pill t">Identity verified</span>
+      <span class="pill b">Escrow protected</span>
+      <span class="pill v">Live skill challenges</span>
+      <span class="pill t">1–2% flat fee</span>
+    </div>
+  </section>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Nobody unverified gets in</h3>
+      <p>Passport, national ID or another government ID, plus a deposit cleared
+         through our payment gateway. Freelancers also need a real profile photo.</p>
+    </div>
+    <div class="card">
+      <h3>Your work stays yours</h3>
+      <p>Skill-challenge submissions are private to the freelancer. Clients see a
+         score and a short summary — never your full code or design.</p>
+    </div>
+    <div class="card">
+      <h3>Talk without leaving</h3>
+      <p>Messaging with read receipts, plus audio and video calls on phones,
+         tablets and desktop.</p>
+    </div>
+  </div>
+
+  <section class="steps">
+    <h2>Installing</h2>
+    <ol>
+      <li><strong>Download the APK</strong> using the button above.</li>
+      <li><strong>Allow install from this source</strong> when Android asks —
+          it asks because this app is distributed here rather than through the
+          Play Store.</li>
+      <li><strong>Open Felicek</strong> and create your account.</li>
+    </ol>
+    <div class="note">
+      <strong>Updates are automatic.</strong> Felicek checks for new versions on
+      its own, downloads them in the background, and verifies each download's
+      SHA-256 checksum before installing. You'll only see one Android
+      confirmation tap — no need to come back to this page.
+    </div>
+  </section>
+
+  <footer>
+    <a href="privacy.html">Privacy</a>·<a href="terms.html">Terms</a>·<a href="update.json">Release manifest</a>
+    <div style="margin-top:8px">© Felicek</div>
+  </footer>
+
+</div>
+
+<script>
+  // The download button and version line come straight from update.json, so
+  // this page can never advertise a release the updater doesn't know about.
+  fetch('update.json?v=' + Date.now())
+    .then(function (r) { return r.json(); })
+    .then(function (m) {
+      var btn = document.getElementById('download');
+      var meta = document.getElementById('release-meta');
+      if (m.apkUrl) { btn.href = m.apkUrl; }
+      var size = m.sizeBytes ? (m.sizeBytes / 1048576).toFixed(1) + ' MB · ' : '';
+      meta.textContent = 'Version ' + (m.versionName || '—') + ' · ' + size +
+        'SHA-256 ' + String(m.sha256 || '').slice(0, 12) + '…';
+    })
+    .catch(function () {
+      document.getElementById('release-meta').textContent =
+        'Could not load release info. Check the releases page.';
+    });
+</script>
+</body>
+</html>
