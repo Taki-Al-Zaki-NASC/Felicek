@@ -131,19 +131,28 @@
 <script>
   // The download button and version line come straight from update.json, so
   // this page can never advertise a release the updater doesn't know about.
+  var REPO = 'Taki-Al-Zaki-NASC/Felicek';
+  var btn = document.getElementById('download');
+  var meta = document.getElementById('release-meta');
+
   fetch('update.json?v=' + Date.now())
     .then(function (r) { return r.json(); })
     .then(function (m) {
-      var btn = document.getElementById('download');
-      var meta = document.getElementById('release-meta');
-      if (m.apkUrl) { btn.href = m.apkUrl; }
+      // A published manifest with a real checksum means a tagged release
+      // exists; the placeholder 000… does not.
+      if (!m.apkUrl || /^0+$/.test(String(m.sha256 || ''))) throw new Error('unpublished');
+      btn.href = m.apkUrl;
       var size = m.sizeBytes ? (m.sizeBytes / 1048576).toFixed(1) + ' MB · ' : '';
       meta.textContent = 'Version ' + (m.versionName || '—') + ' · ' + size +
         'SHA-256 ' + String(m.sha256 || '').slice(0, 12) + '…';
     })
     .catch(function () {
-      document.getElementById('release-meta').textContent =
-        'Could not load release info. Check the releases page.';
+      // No tagged release yet — fall back to the rolling dev build so the
+      // button is never a dead end.
+      btn.href = 'https://github.com/' + REPO + '/releases/tag/dev-build';
+      btn.textContent = '⬇ Download latest dev build';
+      meta.innerHTML = 'No tagged release yet — this is the latest CI build. ' +
+        '<a href="https://github.com/' + REPO + '/releases">All releases</a>';
     });
 </script>
 </body>
