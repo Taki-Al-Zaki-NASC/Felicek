@@ -17,7 +17,7 @@ if (hasReleaseSigning) {
 }
 
 android {
-    namespace = "app.felicek.felicek"
+    namespace = "com.felicek.felicek"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -30,7 +30,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "app.felicek.felicek"
+        applicationId = "com.felicek.felicek"
         // WebRTC's Android build requires 21+; Firebase Auth requires 23+.
         minSdk = maxOf(flutter.minSdkVersion, 23)
         targetSdk = flutter.targetSdkVersion

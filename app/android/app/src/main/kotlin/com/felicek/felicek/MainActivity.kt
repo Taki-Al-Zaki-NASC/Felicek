@@ -1,4 +1,4 @@
-package app.felicek.felicek
+package com.felicek.felicek
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine

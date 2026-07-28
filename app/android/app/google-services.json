@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "853519530089",
+    "firebase_url": "https://felicek-9b728-default-rtdb.firebaseio.com",
+    "project_id": "felicek-9b728",
+    "storage_bucket": "felicek-9b728.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:853519530089:android:5e8f8d13f354dcad168af8",
+        "android_client_info": {
+          "package_name": "com.felicek.felicek"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAK2tw7JoMYQp_VUjDOuKv19GDemrZFxdo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

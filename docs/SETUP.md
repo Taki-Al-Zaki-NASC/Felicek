@@ -83,14 +83,36 @@ cd app && flutter run
    project. Spark (free) is enough.
 2. Authentication → Sign-in method → enable **Email/Password**.
 3. Firestore Database → Create database → production mode.
-4. Add an Android app with package name `app.felicek.felicek`, download
-   `google-services.json` into `app/android/app/`.
+4. Add an Android app with package name `com.felicek.felicek`, download
+   `google-services.json` into `app/android/app/`. The package name must match
+   `applicationId` in `app/android/app/build.gradle.kts` exactly, or the Google
+   Services Gradle plugin fails the build.
 5. Deploy the rules:
    ```bash
    cd firebase
    cp .firebaserc.example .firebaserc   # edit in your project id
    firebase deploy --only firestore:rules,firestore:indexes
    ```
+
+## The configured project
+
+This repo is already wired to Firebase project **`felicek-9b728`** — its
+`app/android/app/google-services.json` is committed (see the note in
+`.gitignore` for why that is not a leak). Two things still have to be done in
+the console, because neither can be done from here:
+
+```bash
+cd firebase
+echo '{"projects":{"default":"felicek-9b728"}}' > .firebaserc
+firebase deploy --only firestore:rules,firestore:indexes
+```
+
+- **Enable Email/Password** under Authentication → Sign-in method. Without it,
+  every sign-up fails with `operation-not-allowed`.
+- **Deploy the rules** with the command above. Until they are deployed, a
+  signed-in account cannot read its own profile document, and the app stops on
+  "Still loading your account" — deliberately, rather than sitting on a splash
+  screen forever.
 
 Instead of `google-services.json` you can inject config at build time — see
 `app/lib/firebase_options.dart` for the `--dart-define` names.

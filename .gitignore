@@ -22,9 +22,20 @@ app/android/key.properties
 # whole key base64-encoded, ready to paste into GitHub secrets.
 keystore-secrets.txt
 
-# Per-project Firebase config. The .example and the emulator-only copy under
-# firebase/emulator/ ARE committed — only the real one is ignored.
-app/android/app/google-services.json
+# Per-project Firebase config.
+#
+# app/android/app/google-services.json IS committed, on purpose. It contains no
+# secret: a Firebase Android "API key" identifies the project, it does not
+# authorise anything, and it ships inside every APK — so anyone who downloads a
+# build already has it. Google documents these as safe to check in.
+#
+# What actually protects this project is firebase/firestore.rules (and the 61
+# tests pinning it). Do not treat this file as a security boundary; if it ever
+# needs restricting, do it in Google Cloud Console → Credentials → API key
+# restrictions, not by hiding the file.
+#
+# Apple's GoogleService-Info.plist stays ignored simply because no iOS/macOS
+# app has been registered in the project yet.
 app/ios/Runner/GoogleService-Info.plist
 app/macos/Runner/GoogleService-Info.plist
 firebase/.firebaserc

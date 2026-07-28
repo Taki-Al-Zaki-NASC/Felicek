@@ -18,60 +18,65 @@ Future<void> main() async {
     () async {
       WidgetsFlutterBinding.ensureInitialized();
 
-      await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
-      SystemChrome.setSystemUIOverlayStyle(
-        const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
-        ),
-      );
-
       FlutterError.onError = (FlutterErrorDetails details) {
         FlutterError.presentError(details);
         _report(details.exception, details.stack);
       };
 
-      final FirebaseSetup setup = await _initFirebase();
-      final AppServices services = AppServices(
-        auth: setup.auth,
-        firestore: setup.firestore,
-        updateService: UpdateService(manifestUrl: AppConfig.updateManifestUrl),
-      );
+      // Cosmetic, and therefore never allowed to be the reason the app fails
+      // to start.
+      try {
+        await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.portraitDown,
+        ]);
+        SystemChrome.setSystemUIOverlayStyle(
+          const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+          ),
+        );
+      } on Object catch (e, s) {
+        _report(e, s);
+      }
 
-      runApp(FelicekApp(services: services, startupError: setup.error));
+      runApp(await _buildApp());
     },
-    (Object error, StackTrace stack) => _report(error, stack),
+    _report,
   );
 }
 
-/// Result of bringing Firebase up — carries a message instead of throwing so
-/// the app can still render a readable failure screen on a misconfigured build.
-class FirebaseSetup {
-  const FirebaseSetup(
-      {required this.auth, required this.firestore, this.error});
-
-  final FirebaseAuth auth;
-  final FirebaseFirestore firestore;
-  final String? error;
-}
-
-Future<FirebaseSetup> _initFirebase() async {
-  String? error;
+/// Decides what to run, and **must not throw**.
+///
+/// If an exception escapes on the way to `runApp`, `runApp` is never called; an
+/// app that never calls `runApp` never draws a frame; and Android then sits on
+/// its system splash — which on Android 12+ is the launcher icon — indefinitely,
+/// with no error and no way out. It is indistinguishable from a hang.
+///
+/// That shipped once. `Firebase.initializeApp` was guarded, but the
+/// `FirebaseAuth.instance` and `FirebaseFirestore.instance` getters immediately
+/// after it were not, and those throw when no default app exists — so the
+/// failure screen written for "Firebase is not configured" was unreachable in
+/// exactly the case it was built for. Hence the second catch: every path out of
+/// this function returns a widget.
+Future<Widget> _buildApp() async {
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.androidOrNull);
-  } on Object catch (e) {
-    error = 'Firebase is not configured for this build.\n\n'
-        'Add android/app/google-services.json (see docs/SETUP.md) or pass the '
-        'FIREBASE_* --dart-define values.\n\n$e';
+  } on Object catch (e, s) {
+    _report(e, s);
+    return FelicekApp.unavailable(
+      'This build has no Firebase configuration, so there is no backend to '
+      'sign in against.\n\n'
+      'Add android/app/google-services.json and rebuild, or pass the '
+      'FIREBASE_* --dart-define values. See docs/SETUP.md.\n\n$e',
+    );
   }
 
-  final FirebaseAuth auth = FirebaseAuth.instance;
-  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  try {
+    // Safe only now that a default app exists — these getters throw otherwise.
+    final FirebaseAuth auth = FirebaseAuth.instance;
+    final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-  if (error == null) {
     // Offline persistence is what makes the messaging UI feel instant: a sent
     // message renders from the local cache before the network round-trip.
     firestore.settings = const Settings(
@@ -89,9 +94,18 @@ Future<FirebaseSetup> _initFirebase() async {
         AppConfig.authEmulatorPort,
       );
     }
-  }
 
-  return FirebaseSetup(auth: auth, firestore: firestore, error: error);
+    return FelicekApp(
+      services: AppServices(
+        auth: auth,
+        firestore: firestore,
+        updateService: UpdateService(manifestUrl: AppConfig.updateManifestUrl),
+      ),
+    );
+  } on Object catch (e, s) {
+    _report(e, s);
+    return FelicekApp.unavailable('Felicek could not start.\n\n$e');
+  }
 }
 
 void _report(Object error, StackTrace? stack) {

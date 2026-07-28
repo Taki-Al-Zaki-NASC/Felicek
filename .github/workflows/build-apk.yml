@@ -80,13 +80,30 @@ jobs:
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
+          # The secret wins when present, so a fork or a second project can
+          # override the committed config without editing the repo.
           if [ -n "${GOOGLE_SERVICES_JSON:-}" ]; then
             printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json
             echo "configured=true" >> "$GITHUB_OUTPUT"
-            echo "Firebase config restored from secret."
+            echo "Firebase config restored from the GOOGLE_SERVICES_JSON secret."
+          elif [ -s google-services.json ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "Using the google-services.json committed in the repository."
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::GOOGLE_SERVICES_JSON is not set. The APK will build and install, but the app will show its 'Firebase is not configured' screen until you add the secret or drop google-services.json in locally. See docs/SETUP.md."
+            echo "::warning::No Firebase config. The APK will build and install, but the app will open to its 'Firebase is not configured' screen. See docs/SETUP.md."
+          fi
+
+          # The Google Services plugin fails the build when the applicationId
+          # has no matching client, and the error it prints is easy to misread.
+          # Say it plainly instead.
+          if [ -s google-services.json ]; then
+            WANT=$(grep -m1 'applicationId' build.gradle.kts | cut -d'"' -f2)
+            if ! grep -q "\"package_name\": \"${WANT}\"" google-services.json; then
+              echo "::error::google-services.json has no client for applicationId '${WANT}'. Register that package in the Firebase console, or fix applicationId in app/android/app/build.gradle.kts."
+              exit 1
+            fi
+            echo "Firebase client matches applicationId ${WANT}."
           fi
 
       - name: Restore signing key (optional)

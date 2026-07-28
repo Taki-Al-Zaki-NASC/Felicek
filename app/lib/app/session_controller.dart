@@ -57,16 +57,31 @@ class SessionController extends ChangeNotifier {
   final AuthRepository _auth;
   final UserRepository _users;
 
+  /// How long the profile document may take to arrive before the splash stops
+  /// pretending progress is being made.
+  ///
+  /// [SessionStage.booting] must be a state the app can leave. Firestore's
+  /// stream stays silent — it does not error — when rules deny a read or the
+  /// database has not been provisioned, so without this the app waits on the
+  /// splash forever with nothing on screen to explain why.
+  static const Duration profileTimeout = Duration(seconds: 12);
+
   StreamSubscription<User?>? _authSub;
   StreamSubscription<AppUser?>? _userSub;
+  Timer? _profileWatchdog;
 
   SessionStage _stage = SessionStage.booting;
   AppUser? _user;
   String? _error;
+  bool _stalled = false;
 
   SessionStage get stage => _stage;
   AppUser? get user => _user;
   String? get error => _error;
+
+  /// Signed in, but the profile never loaded — the session cannot progress
+  /// without the person doing something (retry, or sign out).
+  bool get stalled => _stalled;
   String? get uid => _user?.uid ?? _auth.uid;
   bool get isSignedIn => _auth.isSignedIn;
   UserRole get role => _user?.role ?? UserRole.freelancer;
@@ -82,6 +97,9 @@ class SessionController extends ChangeNotifier {
   void _onAuthChanged(User? firebaseUser) {
     _userSub?.cancel();
     _userSub = null;
+    _profileWatchdog?.cancel();
+    _error = null;
+    _stalled = false;
 
     if (firebaseUser == null) {
       _user = null;
@@ -89,18 +107,44 @@ class SessionController extends ChangeNotifier {
       return;
     }
 
+    _profileWatchdog = Timer(profileTimeout, () {
+      if (_user != null) return;
+      _stalled = true;
+      _error ??= 'Signed in, but your profile did not load.\n\n'
+          'This usually means the Firestore security rules have not been '
+          'deployed to this project yet, or the device is offline.';
+      notifyListeners();
+    });
+
     _userSub = _users.watch(firebaseUser.uid).listen(
       (AppUser? profile) {
         _user = profile;
+        if (profile != null) {
+          _profileWatchdog?.cancel();
+          _stalled = false;
+          _error = null;
+          // Presence powers the "Active now" pill other people see.
+          _users.touchLastSeen(profile.uid);
+        }
         _recomputeStage();
-        // Presence powers the "Active now" pill other people see.
-        if (profile != null) _users.touchLastSeen(profile.uid);
       },
       onError: (Object e) {
+        // A denied read surfaces here; a missing database usually does not,
+        // which is why the watchdog above exists as well.
+        _profileWatchdog?.cancel();
         _error = e.toString();
+        _stalled = true;
         notifyListeners();
       },
     );
+  }
+
+  /// Re-subscribe after a stall — used by the retry affordance.
+  void retry() {
+    _stalled = false;
+    _error = null;
+    notifyListeners();
+    _onAuthChanged(_auth.currentUser);
   }
 
   void _recomputeStage() {
@@ -180,6 +224,7 @@ class SessionController extends ChangeNotifier {
   void dispose() {
     _authSub?.cancel();
     _userSub?.cancel();
+    _profileWatchdog?.cancel();
     super.dispose();
   }
 }

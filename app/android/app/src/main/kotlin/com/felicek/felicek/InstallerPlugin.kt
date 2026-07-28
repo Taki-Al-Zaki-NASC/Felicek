@@ -1,4 +1,4 @@
-package app.felicek.felicek
+package com.felicek.felicek
 
 import android.app.Activity
 import android.content.Intent

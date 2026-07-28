@@ -20,25 +20,35 @@ import 'session_controller.dart';
 /// Root widget: providers, theme, and the one place that decides which shell
 /// the person is looking at.
 class FelicekApp extends StatelessWidget {
-  const FelicekApp({super.key, required this.services, this.startupError});
+  const FelicekApp({super.key, required AppServices services})
+      : _services = services,
+        _startupError = null;
 
-  final AppServices services;
+  /// The app could not be brought up — render the reason instead.
+  ///
+  /// Deliberately takes no [AppServices]: the situations that land here are the
+  /// ones where the dependency graph could not be constructed at all, so there
+  /// is nothing to pass.
+  const FelicekApp.unavailable(String message, {super.key})
+      : _services = null,
+        _startupError = message;
 
-  /// Non-null when Firebase could not be initialised — shown instead of the
-  /// app so a misconfigured build fails loudly and legibly.
-  final String? startupError;
+  final AppServices? _services;
+  final String? _startupError;
 
   @override
   Widget build(BuildContext context) {
-    if (startupError != null) {
+    final String? error = _startupError;
+    if (error != null) {
       return MaterialApp(
         title: 'Felicek',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.build(),
-        home: _StartupErrorScreen(message: startupError!),
+        home: _StartupErrorScreen(message: error),
       );
     }
 
+    final AppServices services = _services!;
     return MultiProvider(
       providers: <SingleChildWidget>[
         Provider<AppServices>.value(value: services),
@@ -111,8 +121,12 @@ class _SessionGate extends StatelessWidget {
     final SessionStage stage = context.select<SessionController, SessionStage>(
       (SessionController s) => s.stage,
     );
+    final bool stalled = context.select<SessionController, bool>(
+      (SessionController s) => s.stalled,
+    );
 
     final Widget child = switch (stage) {
+      SessionStage.booting when stalled => const _SessionStalledScreen(),
       SessionStage.booting => const SplashScreen(),
       SessionStage.signedOut => const AuthScreen(),
       SessionStage.onboarding => const OnboardingScreen(),
@@ -125,6 +139,62 @@ class _SessionGate extends StatelessWidget {
       duration: FMotion.base,
       switchInCurve: FMotion.curve,
       child: KeyedSubtree(key: ValueKey<SessionStage>(stage), child: child),
+    );
+  }
+}
+
+/// Signed in, but the profile never arrived.
+///
+/// The point of this screen is that it is *escapable*: an indefinite splash
+/// leaves someone with a dead app and no information, and signing out is often
+/// the fix (a half-created account, or rules that have since been deployed).
+class _SessionStalledScreen extends StatelessWidget {
+  const _SessionStalledScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final SessionController session = context.watch<SessionController>();
+
+    return Scaffold(
+      backgroundColor: FColors.canvas,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text('Still loading your account',
+                    style: FType.displayMd),
+                const SizedBox(height: FSpace.lg),
+                Text(
+                  session.error ??
+                      'Your profile is taking longer than usual to load.',
+                  style: FType.supportSm,
+                ),
+                const SizedBox(height: FSpace.x3),
+                Row(
+                  children: <Widget>[
+                    TextButton(
+                      onPressed: session.retry,
+                      child: Text('Try again',
+                          style: FType.buttonSm.copyWith(color: FColors.teal)),
+                    ),
+                    const SizedBox(width: FSpace.lg),
+                    TextButton(
+                      onPressed: session.signOut,
+                      child: Text('Sign out',
+                          style: FType.buttonSm
+                              .copyWith(color: FColors.inkMuted)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
