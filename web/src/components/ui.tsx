@@ -139,3 +139,12 @@ export function Wordmark({ href = '/' as Route }: { href?: Route }) {
 /** Money, from cents. One place, so rounding cannot drift between screens. */
 export const money = (cents: number) =>
   `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/** Short relative time ("3m", "2h", "4d"). Mirrors Fmt.relative in the app. */
+export function relative(d: Date) {
+  const mins = Math.round((Date.now() - d.getTime()) / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m`;
+  if (mins < 1440) return `${Math.round(mins / 60)}h`;
+  return `${Math.round(mins / 1440)}d`;
+}
