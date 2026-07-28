@@ -63,6 +63,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final SessionController session = context.read<SessionController>();
     _controller = ChatController(
       repository: context.chatRepo,
+      userRepository: context.userRepo,
       chatId: widget.chatId,
       myUid: session.uid ?? '',
       myName: session.user?.displayName ?? 'You',

@@ -11,6 +11,7 @@ typedef JsonQuerySnap = QuerySnapshot<Json>;
 /// users/{uid}                              — private record, owner-only
 /// users/{uid}/transactions/{txId}
 /// users/{uid}/notifications/{notificationId}
+/// users/{uid}/seats/{seatId}                — agency team seats
 /// profiles/{uid}                           — public mirror, world-readable
 /// jobs/{jobId}
 /// jobs/{jobId}/challengeKey/answer         — owner-only, never freelancer-readable
@@ -18,6 +19,7 @@ typedef JsonQuerySnap = QuerySnapshot<Json>;
 /// proposals/{proposalId}/submission/full   — freelancer-only full challenge answer
 /// paymentIntents/{ref}                     — client creates 'pending'; only a
 ///                                             server webhook may set 'paid'
+/// reviews/{jobId__authorId}                — one review per person per job
 /// calls/{callId}                           — WebRTC signaling (offer/answer/ICE)
 /// chats/{chatId}
 /// chats/{chatId}/messages/{messageId}
@@ -37,6 +39,8 @@ class Db {
   static const String transactionsPath = 'transactions';
   static const String notificationsPath = 'notifications';
   static const String metaPath = 'meta';
+  static const String reviewsPath = 'reviews';
+  static const String seatsPath = 'seats';
   static const String paymentIntentsPath = 'paymentIntents';
   static const String callsPath = 'calls';
   static const String challengeKeyPath = 'challengeKey';
@@ -55,6 +59,10 @@ class Db {
 
   CollectionReference<Json> notifications(String uid) =>
       user(uid).collection(notificationsPath);
+
+  /// Agency team seats — invites and joined members.
+  CollectionReference<Json> seats(String agencyUid) =>
+      user(agencyUid).collection(seatsPath);
 
   CollectionReference<Json> get jobs => firestore.collection(jobsPath);
 
@@ -82,6 +90,10 @@ class Db {
       firestore.collection(paymentIntentsPath);
 
   DocumentReference<Json> paymentIntent(String ref) => paymentIntents.doc(ref);
+
+  CollectionReference<Json> get reviews => firestore.collection(reviewsPath);
+
+  DocumentReference<Json> review(String id) => reviews.doc(id);
 
   CollectionReference<Json> get calls => firestore.collection(callsPath);
 

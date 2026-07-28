@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../data/models/chat.dart';
 import '../../data/models/message.dart';
 import '../../data/repositories/chat_repository.dart';
+import '../../data/repositories/user_repository.dart';
 
 /// All the state one open conversation needs.
 ///
@@ -14,14 +15,17 @@ import '../../data/repositories/chat_repository.dart';
 class ChatController extends ChangeNotifier {
   ChatController({
     required ChatRepository repository,
+    required UserRepository userRepository,
     required this.chatId,
     required this.myUid,
     required this.myName,
-  }) : _repo = repository {
+  })  : _repo = repository,
+        _users = userRepository {
     _subscribe();
   }
 
   final ChatRepository _repo;
+  final UserRepository _users;
   final String chatId;
   final String myUid;
   final String myName;
@@ -278,6 +282,18 @@ class ChatController extends ChangeNotifier {
       quote: quote,
     );
 
+    // Drop a notification into the recipient's feed. Fire-and-forget: a
+    // missed notification must never fail the message it describes.
+    unawaited(
+      _repo.notifyNewMessage(
+        recipientId: otherUid,
+        actorId: myUid,
+        actorName: myName,
+        chatId: chatId,
+        preview: text.length > 120 ? '${text.substring(0, 119)}…' : text,
+      ),
+    );
+
     // The bubble is already on screen via the offline cache; only surface the
     // failure path.
     unawaited(
@@ -353,8 +369,20 @@ class ChatController extends ChangeNotifier {
   Future<void> toggleMute() =>
       _repo.setMuted(chatId: chatId, uid: myUid, muted: !isMuted);
 
-  Future<void> toggleBlock() =>
-      _repo.setBlocked(chatId: chatId, uid: myUid, blocked: !blockedByMe);
+  /// Blocking is recorded on the thread (so both composers lock instantly)
+  /// *and* on my account, so it survives the conversation and shows up under
+  /// Account & security.
+  Future<void> toggleBlock() async {
+    final bool blocking = !blockedByMe;
+    final String other = otherUid;
+    await _repo.setBlocked(chatId: chatId, uid: myUid, blocked: blocking);
+    if (other.isEmpty) return;
+    if (blocking) {
+      await _users.blockUser(myUid, other);
+    } else {
+      await _users.unblockUser(myUid, other);
+    }
+  }
 
   Future<void> archive() =>
       _repo.setArchived(chatId: chatId, uid: myUid, archived: true);

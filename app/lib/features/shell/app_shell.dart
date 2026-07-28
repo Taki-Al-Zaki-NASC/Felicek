@@ -82,19 +82,60 @@ class _AppShellState extends State<AppShell> {
         current: _tab,
         onChanged: (ShellTab t) => setState(() => _tab = t),
       ),
-      floatingActionButton: _tab == ShellTab.home
+      // Messages are reachable from every tab, with a live unread badge. The
+      // design only opened chat from an applicant card, which left no way
+      // back to a conversation once you navigated away.
+      floatingActionButton: uid == null
           ? null
-          : FloatingActionButton.small(
-              backgroundColor: FColors.inkStrong,
-              elevation: 0,
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const InboxScreen()),
-              ),
-              child: const Icon(
-                Icons.chat_bubble_outline_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
+          : StreamBuilder<int>(
+              stream: context.chatRepo.watchTotalUnread(uid),
+              builder: (BuildContext context, AsyncSnapshot<int> snap) {
+                final int unread = snap.data ?? 0;
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: <Widget>[
+                    FloatingActionButton(
+                      backgroundColor: FColors.inkStrong,
+                      elevation: 2,
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const InboxScreen(),
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.chat_bubble_outline_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    if (unread > 0)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          constraints: const BoxConstraints(minWidth: 20),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: FColors.teal,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: FColors.canvas, width: 2),
+                          ),
+                          child: Text(
+                            unread > 99 ? '99+' : '$unread',
+                            textAlign: TextAlign.center,
+                            style: FType.pillSm.copyWith(
+                              fontSize: 10,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
     );
   }

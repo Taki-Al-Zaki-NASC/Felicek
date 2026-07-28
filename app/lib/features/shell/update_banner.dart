@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../app/app.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/theme/typography.dart';
+import '../../core/utils/feedback.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/services/update_service.dart';
 
@@ -146,15 +147,40 @@ class _UpdateSheet extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: FColors.inkStrong,
                 padding: const EdgeInsets.all(15),
-                shape:
-                    const RoundedRectangleBorder(borderRadius: FRadius.buttonR),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: FRadius.buttonR,
+                ),
               ),
-              onPressed: () {
-                Navigator.of(context).pop();
-                service.downloadAndInstall();
+              onPressed: () async {
+                final NavigatorState navigator = Navigator.of(context);
+                final BuildContext outer = context;
+                // Android will not let an app install a package until the
+                // user allows "install unknown apps". Ask for it *before* the
+                // download, rather than letting a 40 MB fetch end in a dialog
+                // that silently does nothing.
+                final bool allowed = await service.canInstallPackages();
+                navigator.pop();
+                if (!allowed) {
+                  if (!outer.mounted) return;
+                  final bool go = await AppFeedback.confirm(
+                    outer,
+                    title: 'Allow installs from Felicek?',
+                    message:
+                        'Felicek is distributed from its website rather than the '
+                        'Play Store, so Android needs your permission to let it '
+                        'install its own updates. We will open the right '
+                        'Settings screen.',
+                    confirmLabel: 'Open Settings',
+                  );
+                  if (go) await service.openInstallPermissionSettings();
+                  return;
+                }
+                await service.downloadAndInstall();
               },
-              child: Text('Download & Install',
-                  style: FType.buttonSm.copyWith(color: Colors.white)),
+              child: Text(
+                'Download & Install',
+                style: FType.buttonSm.copyWith(color: Colors.white),
+              ),
             ),
             if (!state.isMandatory) ...<Widget>[
               const SizedBox(height: FSpace.lg),
@@ -211,8 +237,19 @@ class _MandatoryUpdateDialog extends StatelessWidget {
                 ],
                 if (state.error != null) ...<Widget>[
                   const SizedBox(height: FSpace.lg),
-                  Text(state.error!,
-                      style: FType.captionSm.copyWith(color: FColors.danger)),
+                  Text(
+                    state.error!,
+                    style: FType.captionSm.copyWith(color: FColors.danger),
+                  ),
+                  const SizedBox(height: FSpace.sm),
+                  InkWell(
+                    onTap: notifier.service.dismissError,
+                    child: Text(
+                      'Dismiss',
+                      style: FType.pill
+                          .copyWith(fontSize: 11, color: FColors.inkMuted),
+                    ),
+                  ),
                 ],
               ],
             ),

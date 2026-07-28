@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/app_user.dart';
 import '../models/public_profile.dart';
+import '../models/team_seat.dart';
 import '../models/user_role.dart';
 import '../services/firestore_refs.dart';
 
@@ -234,15 +235,6 @@ class UserRepository {
     await batch.commit();
   }
 
-  /// Called after a first successful job — the vault becomes withdrawable.
-  Future<void> releaseDeposit(String uid) => _db.user(uid).set(
-        <String, dynamic>{
-          'kyc': <String, dynamic>{'depositReleased': true},
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-
   // ── Preferences & safety ────────────────────────────────────────────────
 
   Future<void> saveNotificationPrefs(String uid, NotificationPrefs prefs) =>
@@ -281,6 +273,63 @@ class UserRepository {
       );
     } on FirebaseException {
       // Presence is best-effort — never surface a failure here.
+    }
+  }
+
+  // ── Agency team seats ───────────────────────────────────────────────────
+
+  Stream<List<TeamSeat>> watchTeamSeats(String agencyUid) => _db
+      .seats(agencyUid)
+      .orderBy('invitedAt', descending: false)
+      .snapshots()
+      .map((JsonQuerySnap s) =>
+          s.docs.map(TeamSeat.fromDoc).toList(growable: false));
+
+  /// Records an invite. The seat id is the lowercased email, so inviting the
+  /// same person twice updates one seat rather than creating a duplicate.
+  Future<void> inviteTeamSeat({
+    required String agencyUid,
+    required String email,
+    required String role,
+  }) async {
+    final String key = email.toLowerCase().trim();
+    await _db.seats(agencyUid).doc(key).set(<String, dynamic>{
+      ...TeamSeat(id: key, email: key, role: role).toMap(),
+      'invitedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> removeTeamSeat({
+    required String agencyUid,
+    required String seatId,
+  }) =>
+      _db.seats(agencyUid).doc(seatId).delete();
+
+  /// Called after sign-up: if this address was invited to an agency, fill the
+  /// seat in so the roster stops saying "Invited".
+  Future<void> claimTeamSeat({
+    required String uid,
+    required String email,
+    required String displayName,
+  }) async {
+    final String key = email.toLowerCase().trim();
+    try {
+      final JsonQuerySnap matches = await _db.firestore
+          .collectionGroup(Db.seatsPath)
+          .where('email', isEqualTo: key)
+          .where('accepted', isEqualTo: false)
+          .limit(5)
+          .get();
+      for (final QueryDocumentSnapshot<Json> doc in matches.docs) {
+        await doc.reference.set(<String, dynamic>{
+          'memberUid': uid,
+          'displayName': displayName,
+          'accepted': true,
+          'acceptedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+    } on FirebaseException {
+      // An unclaimed seat is harmless — it simply stays "Invited".
     }
   }
 

@@ -21,8 +21,17 @@ import '../../data/services/payment_gateway_service.dart';
 /// freelancers, posting balance for everyone else), payout method, and the
 /// transaction ledger. Withdrawals and top-ups are handed off to the external
 /// payment gateway rather than simulated with a button.
-class WalletScreen extends StatelessWidget {
+class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
+
+  @override
+  State<WalletScreen> createState() => _WalletScreenState();
+}
+
+class _WalletScreenState extends State<WalletScreen> {
+  /// The payout rail every money action on this screen uses — the fee is
+  /// 1% on local rails and 2% on PayPal, so this selection actually matters.
+  PayoutMethod method = PayoutMethod.bkash;
 
   @override
   Widget build(BuildContext context) {
@@ -46,13 +55,16 @@ class WalletScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: <Widget>[
-                  _BalanceCard(user: user),
+                  _BalanceCard(user: user, method: method),
                   const SizedBox(height: FSpace.x2),
                   _VaultCard(user: user),
                   const SizedBox(height: FSpace.x3),
                   const FSectionLabel('Payout Method'),
                   const SizedBox(height: FSpace.lg),
-                  const _PayoutMethods(),
+                  _PayoutMethods(
+                    selected: method,
+                    onChanged: (PayoutMethod m) => setState(() => method = m),
+                  ),
                   const SizedBox(height: FSpace.lg),
                   Text(
                     'Direct local payouts (bKash/Nagad/Bank) with zero platform '
@@ -77,9 +89,10 @@ class WalletScreen extends StatelessWidget {
 }
 
 class _BalanceCard extends StatefulWidget {
-  const _BalanceCard({required this.user});
+  const _BalanceCard({required this.user, required this.method});
 
   final AppUser user;
+  final PayoutMethod method;
 
   @override
   State<_BalanceCard> createState() => _BalanceCardState();
@@ -87,6 +100,9 @@ class _BalanceCard extends StatefulWidget {
 
 class _BalanceCardState extends State<_BalanceCard> {
   bool _busy = false;
+
+  /// The intent opened by the most recent "Add funds" tap, if any.
+  String? _pendingTopUp;
 
   Future<void> _withdraw() async {
     final int? cents = await _promptAmount(context, title: 'Withdraw funds');
@@ -97,7 +113,7 @@ class _BalanceCardState extends State<_BalanceCard> {
       await wallet.withdraw(
         uid: widget.user.uid,
         amountCents: cents,
-        method: PayoutMethod.bkash,
+        method: widget.method,
       );
       if (mounted) {
         AppFeedback.success(context, 'Withdrawal requested.');
@@ -121,20 +137,63 @@ class _BalanceCardState extends State<_BalanceCard> {
     final PaymentGatewayService gateway = context.paymentGateway;
     setState(() => _busy = true);
     try {
-      await gateway.startCheckout(
+      final String ref = await gateway.startCheckout(
         uid: widget.user.uid,
         purpose: PaymentPurpose.walletTopUp,
         amountCents: cents,
       );
+      _pendingTopUp = ref;
       if (mounted) {
         AppFeedback.toast(
           context,
-          'Complete the payment in your browser to add funds.',
+          'Complete the payment in your browser, then tap "Confirm top-up".',
         );
       }
     } on Object {
       if (mounted) {
         AppFeedback.error(context, 'Could not open the payment gateway.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Credits the wallet once the gateway's webhook has marked the intent
+  /// paid. Nothing here can grant money on its own — the balance only moves
+  /// after a status the client is not allowed to write.
+  Future<void> _confirmTopUp() async {
+    final String? ref = _pendingTopUp;
+    if (ref == null || _busy) return;
+    final PaymentGatewayService gateway = context.paymentGateway;
+    final WalletRepository wallet = context.walletRepo;
+    setState(() => _busy = true);
+    try {
+      final PaymentIntent? intent = await gateway.fetchStatus(ref);
+      if (intent == null || intent.status == PaymentStatus.pending) {
+        if (mounted) {
+          AppFeedback.toast(
+            context,
+            "That payment hasn't cleared yet. Try again in a moment.",
+          );
+        }
+        return;
+      }
+      if (intent.status != PaymentStatus.paid) {
+        if (mounted) {
+          AppFeedback.error(context, 'That payment did not go through.');
+        }
+        return;
+      }
+      await wallet.creditTopUp(
+        uid: widget.user.uid,
+        amountCents: intent.amountCents,
+        method: PayoutMethod.fromLabel(intent.method),
+      );
+      _pendingTopUp = null;
+      if (mounted) AppFeedback.success(context, 'Funds added.');
+    } on Object {
+      if (mounted) {
+        AppFeedback.error(context, 'Could not confirm that top-up.');
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -196,6 +255,15 @@ class _BalanceCardState extends State<_BalanceCard> {
               ),
             ],
           ),
+          if (_pendingTopUp != null) ...<Widget>[
+            const SizedBox(height: FSpace.lg),
+            FButton.compact(
+              label: 'Confirm top-up',
+              variant: FButtonVariant.teal,
+              busy: _busy,
+              onPressed: _confirmTopUp,
+            ),
+          ],
         ],
       ),
     );
@@ -282,28 +350,34 @@ class _VaultCard extends StatelessWidget {
   }
 }
 
-class _PayoutMethods extends StatefulWidget {
-  const _PayoutMethods();
+class _PayoutMethods extends StatelessWidget {
+  const _PayoutMethods({required this.selected, required this.onChanged});
 
-  @override
-  State<_PayoutMethods> createState() => _PayoutMethodsState();
-}
-
-class _PayoutMethodsState extends State<_PayoutMethods> {
-  PayoutMethod _selected = PayoutMethod.bkash;
+  final PayoutMethod selected;
+  final ValueChanged<PayoutMethod> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        for (final PayoutMethod m in PayoutMethod.values)
-          FChoiceChip(
-            label: m.label,
-            selected: _selected == m,
-            onTap: () => setState(() => _selected = m),
-          ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: <Widget>[
+            for (final PayoutMethod m in PayoutMethod.values)
+              FChoiceChip(
+                label: m.label,
+                selected: selected == m,
+                onTap: () => onChanged(m),
+              ),
+          ],
+        ),
+        const SizedBox(height: FSpace.md),
+        Text(
+          'Maintenance fee on this rail: ${Fees.label(selected)}',
+          style: FType.captionSm.copyWith(fontSize: 10.5),
+        ),
       ],
     );
   }

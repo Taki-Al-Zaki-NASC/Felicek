@@ -13,13 +13,23 @@ import '../../core/widgets/f_field.dart';
 import '../../core/widgets/f_pill.dart';
 import '../../core/widgets/f_surface.dart';
 import '../../data/models/app_user.dart';
+import '../../data/models/call_session.dart';
 import '../../data/models/job.dart';
 import '../../data/models/proposal.dart';
 import '../../data/models/public_profile.dart';
+import '../../data/models/wallet.dart';
+import '../../data/repositories/chat_repository.dart';
+import '../../data/repositories/engagement_repository.dart';
 import '../../data/repositories/job_repository.dart';
+import '../../data/repositories/proposal_repository.dart';
+import '../../data/repositories/user_repository.dart';
+import '../../data/services/call_service.dart';
+import '../call/call_screen.dart';
 import '../chat/chat_screen.dart';
 import '../kyc/kyc_screen.dart';
 import 'challenge_sheet.dart';
+import 'post_job_screen.dart';
+import 'review_sheet.dart';
 
 class JobDetailScreen extends StatefulWidget {
   const JobDetailScreen({super.key, required this.jobId});
@@ -152,6 +162,83 @@ class _FreelancerViewState extends State<_FreelancerView> {
     if (mounted) {
       AppFeedback.success(context, 'Challenge submitted.');
     }
+  }
+
+  /// Places the live-interview call and, when it ends, links the call to the
+  /// proposal so the challenge registers as completed. Without this the
+  /// interview would happen and the proposal would still read "not taken".
+  Future<void> _startInterview(BuildContext context, Proposal mine) async {
+    final SessionController session = context.read<SessionController>();
+    final CallService calls = context.callService;
+    final ProposalRepository proposals = context.proposalRepo;
+    if (calls.inCall) {
+      AppFeedback.error(context, 'You are already on a call.');
+      return;
+    }
+
+    final Future<void> pushed = Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CallScreen(
+          otherName: widget.job.ownerName,
+          otherUid: widget.job.ownerId,
+        ),
+      ),
+    );
+
+    final String? callId = await calls.startCall(
+      myUid: session.uid ?? '',
+      myName: session.user?.displayName ?? 'You',
+      otherUid: widget.job.ownerId,
+      otherName: widget.job.ownerName,
+      kind: CallKind.video,
+    );
+    await pushed;
+
+    if (callId != null) {
+      await proposals.recordInterviewCall(proposalId: mine.id, callId: callId);
+      if (context.mounted) {
+        AppFeedback.success(
+            context, 'Interview recorded against your proposal.');
+      }
+    } else if (context.mounted) {
+      AppFeedback.error(context, calls.error ?? 'Could not start the call.');
+    }
+  }
+
+  /// Shows the freelancer their own full answer. Firestore rules scope this
+  /// subcollection to its author, so this read succeeds for them and would
+  /// fail for the job owner — the privacy boundary is the same one the server
+  /// enforces, not a UI decision.
+  Future<void> _showMySubmission(BuildContext context, Proposal mine) async {
+    final ProposalRepository proposals = context.proposalRepo;
+    final String? answer = await proposals.fetchMyFullAnswer(mine.id);
+    if (!context.mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        expand: false,
+        builder: (BuildContext context, ScrollController scroll) => ListView(
+          controller: scroll,
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          children: <Widget>[
+            const Text('Your submission', style: FType.displaySm),
+            const SizedBox(height: FSpace.sm),
+            const Text(
+              'Only you can read this. The client sees a score and a short '
+              'excerpt — never the full text.',
+              style: FType.caption,
+            ),
+            const SizedBox(height: FSpace.x3),
+            SelectableText(
+              answer?.isNotEmpty == true ? answer! : 'Nothing saved yet.',
+              style: FType.bodySm,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _submitProposal(Proposal? existing) async {
@@ -307,6 +394,27 @@ class _FreelancerViewState extends State<_FreelancerView> {
                         style: FType.bodySm.copyWith(fontSize: 12.5),
                       ),
                     const SizedBox(height: FSpace.xl),
+                    if (job.challenge.mode == ChallengeMode.liveInterview &&
+                        mine?.challenge.interviewScheduledAt != null &&
+                        !challengeDone) ...<Widget>[
+                      FButton.compact(
+                        label: 'Start Interview Call',
+                        variant: FButtonVariant.teal,
+                        onPressed: () => _startInterview(context, mine!),
+                      ),
+                      const SizedBox(height: FSpace.md),
+                    ],
+                    if (challengeDone &&
+                        mine != null &&
+                        mine.challenge.hasFullSubmission) ...<Widget>[
+                      FTextAction(
+                        label: 'View my submission',
+                        color: FColors.violet,
+                        fontSize: 11.5,
+                        onPressed: () => _showMySubmission(context, mine),
+                      ),
+                      const SizedBox(height: FSpace.md),
+                    ],
                     FButton.compact(
                       label: challengeDone
                           ? 'Challenge Completed ✓'
@@ -342,6 +450,21 @@ class _FreelancerViewState extends State<_FreelancerView> {
               height: 80,
               enabled: !submitted,
             ),
+            if (mine != null &&
+                mine.status == ProposalStatus.completed) ...<Widget>[
+              const SizedBox(height: FSpace.x2),
+              FButton(
+                label: 'Review ${job.ownerName}',
+                variant: FButtonVariant.secondary,
+                onPressed: () => ReviewSheet.show(
+                  context,
+                  job: job,
+                  proposal: mine,
+                  subjectId: job.ownerId,
+                  subjectName: job.ownerName,
+                ),
+              ),
+            ],
             const SizedBox(height: FSpace.x2),
             FButton(
               label: submitted ? 'Proposal Submitted ✓' : 'Submit Proposal',
@@ -382,6 +505,10 @@ class _OwnerView extends StatelessWidget {
         Text('${job.budget} · Posted ${Fmt.relative(job.createdAt)}',
             style: FType.caption),
         const SizedBox(height: FSpace.x3),
+        if (job.isHired) ...<Widget>[
+          _EscrowPanel(job: job),
+          const SizedBox(height: FSpace.x3),
+        ],
         const FSectionLabel('Listing Analytics'),
         const SizedBox(height: FSpace.lg),
         Row(
@@ -493,7 +620,11 @@ class _OwnerView extends StatelessWidget {
                 label: 'Edit Listing',
                 fontSize: 13,
                 padding: const EdgeInsets.all(14),
-                onPressed: () {},
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => PostJobScreen(existing: job),
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: FSpace.lg),
@@ -528,6 +659,54 @@ class _ApplicantCard extends StatelessWidget {
 
   final Job job;
   final Proposal proposal;
+
+  /// Hiring funds escrow out of the client's posting balance and opens the
+  /// thread the engagement's event lines are posted into.
+  Future<void> _hire(BuildContext context) async {
+    final bool ok = await AppFeedback.confirm(
+      context,
+      title: 'Hire ${proposal.freelancerName}?',
+      message:
+          '${proposal.bidLabel} moves from your posting balance into escrow, '
+          'and the listing closes to new proposals.',
+      confirmLabel: 'Hire',
+    );
+    if (!ok || !context.mounted) return;
+
+    final SessionController session = context.read<SessionController>();
+    final PublicProfile? me = session.publicProfile;
+    final EngagementRepository engagements = context.engagementRepo;
+    final UserRepository users = context.userRepo;
+    final ChatRepository chats = context.chatRepo;
+    if (me == null) return;
+
+    try {
+      final PublicProfile? other =
+          await users.fetchProfile(proposal.freelancerId);
+      if (other == null) {
+        if (context.mounted) {
+          AppFeedback.error(context, 'That freelancer is no longer available.');
+        }
+        return;
+      }
+      final String chatId = await chats.openThread(
+        me: me,
+        other: other,
+        jobId: job.id,
+        jobTitle: job.title,
+      );
+      await engagements.hire(job: job, proposal: proposal, chatId: chatId);
+      if (context.mounted) {
+        AppFeedback.success(context, 'Hired — escrow funded.');
+      }
+    } on InsufficientPostingBalance catch (e) {
+      if (context.mounted) AppFeedback.error(context, e.message);
+    } on Object {
+      if (context.mounted) {
+        AppFeedback.error(context, 'Could not complete the hire. Try again.');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -640,16 +819,45 @@ class _ApplicantCard extends StatelessWidget {
                     headerName: proposal.freelancerName,
                   ),
                 ),
-                if (proposal.status == ProposalStatus.submitted ||
-                    proposal.status == ProposalStatus.shortlisted)
+                if (!job.isHired &&
+                    (proposal.status == ProposalStatus.submitted ||
+                        proposal.status == ProposalStatus.shortlisted))
+                  FTextAction(
+                    label: proposal.status == ProposalStatus.shortlisted
+                        ? 'Shortlisted ✓'
+                        : 'Shortlist',
+                    background: FColors.blueTint,
+                    color: FColors.blue,
+                    fontSize: 11,
+                    onPressed: () => context.engagementRepo.shortlist(
+                      proposal: proposal,
+                      on: proposal.status != ProposalStatus.shortlisted,
+                    ),
+                  ),
+                if (!job.isHired &&
+                    (proposal.status == ProposalStatus.submitted ||
+                        proposal.status == ProposalStatus.shortlisted))
                   FTextAction(
                     label: 'Hire',
                     background: FColors.inkStrong,
                     color: Colors.white,
                     fontSize: 11,
-                    onPressed: () => context.proposalRepo.setStatus(
+                    onPressed: () => _hire(context),
+                  ),
+                if (job.hiredProposalId == proposal.id)
+                  FPill.teal('Hired', fontSize: 10.5),
+                if (job.hiredProposalId == proposal.id && job.isFullyReleased)
+                  FTextAction(
+                    label: 'Leave a review',
+                    background: FColors.amberTint,
+                    color: FColors.amber,
+                    fontSize: 11,
+                    onPressed: () => ReviewSheet.show(
+                      context,
+                      job: job,
                       proposal: proposal,
-                      status: ProposalStatus.accepted,
+                      subjectId: proposal.freelancerId,
+                      subjectName: proposal.freelancerName,
                     ),
                   ),
               ],
@@ -657,6 +865,181 @@ class _ApplicantCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+// ── Escrow / milestone release ─────────────────────────────────────────────
+
+/// The owner's release panel: what is still held in escrow, and a Release
+/// button per milestone.
+///
+/// This is the half of the marketplace that actually moves money. Releasing
+/// the final milestone completes the engagement — the job closes, the
+/// freelancer's job count moves, and their refundable trust bond unlocks. All
+/// of that happens in one transaction inside [EngagementRepository].
+class _EscrowPanel extends StatefulWidget {
+  const _EscrowPanel({required this.job});
+
+  final Job job;
+
+  @override
+  State<_EscrowPanel> createState() => _EscrowPanelState();
+}
+
+class _EscrowPanelState extends State<_EscrowPanel> {
+  int? _releasing;
+
+  Future<void> _release(Proposal hired, int index) async {
+    final Milestone m = widget.job.milestones[index];
+    final bool isFinal = widget.job.milestones.asMap().entries.every(
+        (MapEntry<int, Milestone> e) => e.key == index || e.value.released);
+
+    final bool ok = await AppFeedback.confirm(
+      context,
+      title: 'Release "${m.label}"?',
+      message: isFinal
+          ? 'This is the last milestone. Releasing it pays ${hired.freelancerName}, '
+              'closes the engagement, and unlocks their trust deposit. This cannot '
+              'be undone.'
+          : 'This pays ${hired.freelancerName} for this milestone. It cannot be undone.',
+      confirmLabel: 'Release',
+    );
+    if (!ok || !mounted) return;
+
+    final EngagementRepository engagements = context.engagementRepo;
+    setState(() => _releasing = index);
+    try {
+      await engagements.releaseMilestone(
+        job: widget.job,
+        proposal: hired,
+        milestoneIndex: index,
+      );
+      if (mounted) {
+        AppFeedback.success(
+          context,
+          isFinal ? 'Engagement complete.' : 'Milestone released.',
+        );
+      }
+    } on Object {
+      if (mounted) {
+        AppFeedback.error(
+            context, 'Could not release that milestone. Try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _releasing = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Job job = widget.job;
+
+    return StreamBuilder<List<Proposal>>(
+      stream: context.proposalRepo.watchForJob(job.id),
+      builder: (BuildContext context, AsyncSnapshot<List<Proposal>> snap) {
+        Proposal? hired;
+        for (final Proposal p in snap.data ?? const <Proposal>[]) {
+          if (p.id == job.hiredProposalId) hired = p;
+        }
+        if (hired == null) return const SizedBox.shrink();
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: FColors.tealTint,
+            borderRadius: FRadius.cardR,
+            border: Border.all(color: FColors.teal.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  const FSectionLabel('Escrow', color: FColors.tealDarker),
+                  FPill.teal('Hired · ${hired.freelancerName}', fontSize: 10),
+                ],
+              ),
+              const SizedBox(height: FSpace.lg),
+              Text(
+                job.isFullyReleased
+                    ? 'All milestones released'
+                    : '${Fmt.moneyExact(job.escrowHeld)} still held',
+                style: FType.titleLg.copyWith(fontSize: 22),
+              ),
+              const SizedBox(height: FSpace.x2),
+              for (int i = 0; i < job.milestones.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: FSpace.md),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 13, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: FColors.surface,
+                      borderRadius: FRadius.rowR,
+                      border: Border.all(color: FColors.borderFaint),
+                    ),
+                    child: Row(
+                      children: <Widget>[
+                        Icon(
+                          job.milestones[i].released
+                              ? Icons.check_circle_rounded
+                              : Icons.radio_button_unchecked_rounded,
+                          size: 16,
+                          color: job.milestones[i].released
+                              ? FColors.teal
+                              : FColors.inkFaint,
+                        ),
+                        const SizedBox(width: FSpace.lg),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Text(
+                                job.milestones[i].label,
+                                style: FType.bodyXs.copyWith(fontSize: 12.5),
+                              ),
+                              Text(
+                                job.milestones[i].amount,
+                                style: FType.money.copyWith(fontSize: 11.5),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (job.milestones[i].released)
+                          FPill.teal('Released', fontSize: 10)
+                        else if (_releasing == i)
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: FColors.teal,
+                            ),
+                          )
+                        else
+                          FTextAction(
+                            label: 'Release',
+                            background: FColors.inkStrong,
+                            color: Colors.white,
+                            fontSize: 11,
+                            onPressed: () => _release(hired!, i),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              Text(
+                'Released funds reach the freelancer immediately, net of the flat '
+                '${Fees.label(PayoutMethod.bkash)} maintenance fee.',
+                style: FType.captionSm.copyWith(fontSize: 10),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -15,10 +15,18 @@ import '../../data/models/job.dart';
 import '../../data/models/user_role.dart';
 
 /// "Post a New Job" — title, budget, scope, and the optional live skill
-/// challenge, now with a mode picker (written prompt / quiz / live interview)
-/// on top of the design's single free-text challenge field.
+/// challenge, with a mode picker (written prompt / quiz / live interview) on
+/// top of the design's single free-text challenge field.
+///
+/// Pass [existing] to reuse the same form as "Edit Listing": the fields are
+/// pre-filled and Publish becomes Save. The quiz answer key is deliberately
+/// *not* pre-filled — it lives in an owner-only subcollection and re-entering
+/// it is the honest behaviour, rather than silently keeping a key the form
+/// can no longer show.
 class PostJobScreen extends StatefulWidget {
-  const PostJobScreen({super.key});
+  const PostJobScreen({super.key, this.existing});
+
+  final Job? existing;
 
   @override
   State<PostJobScreen> createState() => _PostJobScreenState();
@@ -52,6 +60,40 @@ class _PostJobScreenState extends State<PostJobScreen> {
   final List<_QuizDraft> _quiz = <_QuizDraft>[_QuizDraft()];
   bool _busy = false;
   String? _titleError, _budgetError, _scopeError;
+
+  bool get _isEditing => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final Job? job = widget.existing;
+    if (job == null) return;
+    _title.text = job.title;
+    _budget.text = job.budget;
+    _scope.text = job.scope;
+    _skills.text = job.skills.join(', ');
+    _equity.text = job.equity ?? '';
+    _challengeEnabled = job.challenge.enabled;
+    _mode = job.challenge.mode;
+    _prompt.text = job.challenge.prompt;
+    if (job.challenge.questions.isNotEmpty) {
+      for (final _QuizDraft q in _quiz) {
+        q.dispose();
+      }
+      _quiz
+        ..clear()
+        ..addAll(job.challenge.questions.map((QuizQuestion q) {
+          final _QuizDraft draft = _QuizDraft();
+          draft.promptCtrl.text = q.prompt;
+          for (int i = 0;
+              i < draft.optionCtrls.length && i < q.options.length;
+              i++) {
+            draft.optionCtrls[i].text = q.options[i];
+          }
+          return draft;
+        }));
+    }
+  }
 
   @override
   void dispose() {
@@ -121,6 +163,32 @@ class _PostJobScreenState extends State<PostJobScreen> {
         : null;
 
     try {
+      final Job? existing = widget.existing;
+      if (existing != null) {
+        await context.jobRepo.update(
+          jobId: existing.id,
+          title: _title.text,
+          summary: _scope.text.length > 130
+              ? '${_scope.text.substring(0, 129)}…'
+              : _scope.text,
+          scope: _scope.text,
+          budget: _budget.text,
+          skills: skills,
+          milestones: existing.milestones,
+          challenge: _challengeEnabled ? challenge : const SkillChallenge(),
+          equity:
+              session.role == UserRole.startup && _equity.text.trim().isNotEmpty
+                  ? _equity.text.trim()
+                  : null,
+          quizAnswerKey: key,
+        );
+        if (mounted) {
+          AppFeedback.success(context, 'Listing updated.');
+          Navigator.of(context).maybePop();
+        }
+        return;
+      }
+
       await context.jobRepo.publish(
         owner: profile,
         title: _title.text,
@@ -223,7 +291,11 @@ class _PostJobScreenState extends State<PostJobScreen> {
                       setState(() => _quiz[qi].correctIndex = oi),
                 ),
                 const SizedBox(height: FSpace.x2),
-                FButton(label: 'Publish Job', busy: _busy, onPressed: _submit),
+                FButton(
+                  label: _isEditing ? 'Save Changes' : 'Publish Job',
+                  busy: _busy,
+                  onPressed: _submit,
+                ),
               ],
             ),
           ),

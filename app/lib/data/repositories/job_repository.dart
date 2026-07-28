@@ -155,16 +155,6 @@ class JobRepository {
     }
   }
 
-  Future<void> setShortlisted(String jobId, int delta) async {
-    try {
-      await _db.job(jobId).update(<String, dynamic>{
-        'shortlisted': FieldValue.increment(delta),
-      });
-    } on FirebaseException {
-      // Non-critical.
-    }
-  }
-
   /// Prefix search across titles, summaries and skills.
   Future<List<Job>> search(String query, {int limit = 30}) async {
     final String q = query.trim().toLowerCase();

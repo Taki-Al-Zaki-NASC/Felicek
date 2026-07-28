@@ -5,6 +5,10 @@ import '../services/firestore_refs.dart';
 
 /// The wallet ledger and the trust-fund vault.
 ///
+/// Escrow *release* deliberately lives in [EngagementRepository] instead:
+/// paying a milestone also moves reputation and can unlock a trust bond, so
+/// keeping a second, simpler version here would guarantee the two drift.
+///
 /// Balances move through a Firestore transaction so a double-tapped withdraw
 /// can never spend the same money twice, and every movement writes a ledger
 /// line in the same atomic step.
@@ -111,71 +115,55 @@ class WalletRepository {
     });
   }
 
-  /// Records the refundable $20 trust deposit as a ledger line.
+  /// Writes the mandatory deposit into the ledger once the gateway has
+  /// confirmed it, so the person's statement shows where their money went.
+  ///
+  /// A freelancer's trust bond is held (a debit that comes back later); a
+  /// client's posting balance is theirs to spend, so it also credits
+  /// `postingBalanceCents`.
   Future<void> recordTrustDeposit({
     required String uid,
     required PayoutMethod method,
+    int amountCents = Fees.trustDepositCents,
+    bool isTrustBond = true,
   }) async {
     final DocumentReference<Json> txRef = _db.transactions(uid).doc();
-    await txRef.set(<String, dynamic>{
+    final WriteBatch batch = _db.firestore.batch();
+
+    batch.set(txRef, <String, dynamic>{
       ...WalletTransaction(
         id: txRef.id,
-        label: 'Trust fund deposit (refundable)',
-        amountCents: -Fees.trustDepositCents,
+        label: isTrustBond
+            ? 'Trust fund deposit (refundable)'
+            : 'Job posting balance funded',
+        amountCents: isTrustBond ? -amountCents : amountCents,
         kind: TxKind.deposit,
         method: method.label,
       ).toMap(),
       'createdAt': FieldValue.serverTimestamp(),
     });
+
+    if (!isTrustBond) {
+      batch.set(
+        _db.user(uid),
+        <String, dynamic>{
+          'postingBalanceCents': FieldValue.increment(amountCents),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    }
+    await batch.commit();
   }
 
-  /// Releases an escrow milestone into the freelancer's balance, net of the
-  /// platform fee, and mirrors both lines into the ledger.
-  Future<void> releaseEscrow({
-    required String freelancerId,
+  /// Credits a confirmed gateway top-up into the wallet. Called only after
+  /// [PaymentGatewayService] observes the intent as `paid`.
+  Future<void> creditTopUp({
+    required String uid,
     required int amountCents,
-    required String jobTitle,
-    required String jobId,
-    PayoutMethod method = PayoutMethod.bkash,
-  }) async {
-    final int feeCents = Fees.feeCentsFor(amountCents, method);
-    final DocumentReference<Json> userRef = _db.user(freelancerId);
-    final DocumentReference<Json> creditRef =
-        _db.transactions(freelancerId).doc();
-    final DocumentReference<Json> feeRef = _db.transactions(freelancerId).doc();
-
-    await _db.firestore.runTransaction((Transaction tx) async {
-      final DocumentSnapshot<Json> snap = await tx.get(userRef);
-      final Json data = snap.data() ?? <String, dynamic>{};
-      final int balance = (data['walletBalanceCents'] as num?)?.toInt() ?? 0;
-      final int earned = (data['totalEarnedCents'] as num?)?.toInt() ?? 0;
-      tx.update(userRef, <String, dynamic>{
-        'walletBalanceCents': balance + amountCents - feeCents,
-        'totalEarnedCents': earned + amountCents,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      tx.set(creditRef, <String, dynamic>{
-        ...WalletTransaction(
-          id: creditRef.id,
-          label: 'Escrow release — $jobTitle',
-          amountCents: amountCents,
-          kind: TxKind.escrowRelease,
-          jobId: jobId,
-        ).toMap(),
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      tx.set(feeRef, <String, dynamic>{
-        ...WalletTransaction(
-          id: feeRef.id,
-          label: 'Platform maintenance fee (${Fees.label(method)})',
-          amountCents: -feeCents,
-          kind: TxKind.platformFee,
-          jobId: jobId,
-        ).toMap(),
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    });
-  }
+    required PayoutMethod method,
+  }) =>
+      addFunds(uid: uid, amountCents: amountCents, method: method);
 }
 
 /// Raised when a withdrawal exceeds the available balance.

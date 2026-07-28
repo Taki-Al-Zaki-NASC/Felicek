@@ -222,42 +222,6 @@ class ChatRepository {
     );
   }
 
-  /// Writes an event line into the thread ("Proposal submitted · $430").
-  ///
-  /// System messages never bump the other side's unread counter — they are
-  /// context, not correspondence.
-  Future<void> sendSystemEvent({
-    required String chatId,
-    required String actorId,
-    required String text,
-  }) async {
-    final Message message = Message(
-      id: _db.messages(chatId).doc().id,
-      senderId: actorId,
-      senderName: 'Felicek',
-      text: text,
-      type: MessageType.system,
-      clientSentAt: DateTime.now(),
-    );
-    final WriteBatch batch = _db.firestore.batch();
-    batch.set(
-      _db.message(chatId, message.id),
-      message.toMap(serverTimestamp: true),
-    );
-    batch.set(
-      _db.chat(chatId),
-      <String, dynamic>{
-        'lastMessagePreview': text,
-        'lastMessageSenderId': actorId,
-        'lastMessageAt': FieldValue.serverTimestamp(),
-        'lastMessageType': MessageType.system.name,
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
-    await batch.commit();
-  }
-
   Future<void> _commit({
     required String chatId,
     required String recipientId,

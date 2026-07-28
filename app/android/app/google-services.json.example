@@ -1,0 +1,38 @@
+{
+  "_comment": [
+    "TEMPLATE — this file is NOT used by the build. Copy it to",
+    "google-services.json and replace every <PLACEHOLDER>, or (much easier) run",
+    "./scripts/setup_firebase.sh from the repo root, which generates the real",
+    "file for you via flutterfire. The real google-services.json is git-ignored.",
+    "",
+    "Where each value comes from: Firebase console -> Project settings ->",
+    "Your apps -> Android app -> google-services.json."
+  ],
+  "project_info": {
+    "project_number": "<SENDER_ID e.g. 123456789012>",
+    "project_id": "<YOUR_FIREBASE_PROJECT_ID>",
+    "storage_bucket": "<YOUR_FIREBASE_PROJECT_ID>.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "<APP_ID e.g. 1:123456789012:android:abcdef0123456789>",
+        "android_client_info": {
+          "package_name": "app.felicek.felicek"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "<ANDROID_API_KEY>"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

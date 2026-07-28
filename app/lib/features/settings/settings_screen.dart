@@ -11,6 +11,7 @@ import '../../core/theme/typography.dart';
 import '../../core/utils/feedback.dart';
 import '../../core/widgets/f_surface.dart';
 import '../../data/models/app_user.dart';
+import 'account_screen.dart';
 
 /// Notification preferences, privacy links, app version, and manual
 /// "Check for updates" — the settings destinations the design's Profile
@@ -35,6 +36,23 @@ class SettingsScreen extends StatelessWidget {
                 const FSectionLabel('Notifications'),
                 const SizedBox(height: FSpace.lg),
                 if (user != null) _NotificationToggles(user: user),
+                const SizedBox(height: FSpace.x3),
+                const FSectionLabel('Account'),
+                const SizedBox(height: FSpace.lg),
+                FCard(
+                  radius: FRadius.card,
+                  padding: EdgeInsets.zero,
+                  child: _LinkRow(
+                    label: 'Account & security',
+                    showDivider: false,
+                    icon: Icons.chevron_right_rounded,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AccountScreen(),
+                      ),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: FSpace.x3),
                 const FSectionLabel('Privacy & data'),
                 const SizedBox(height: FSpace.lg),
@@ -179,12 +197,17 @@ class _ToggleRow extends StatelessWidget {
 }
 
 class _LinkRow extends StatelessWidget {
-  const _LinkRow(
-      {required this.label, required this.onTap, this.showDivider = true});
+  const _LinkRow({
+    required this.label,
+    required this.onTap,
+    this.showDivider = true,
+    this.icon = Icons.open_in_new_rounded,
+  });
 
   final String label;
   final VoidCallback onTap;
   final bool showDivider;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -202,8 +225,7 @@ class _LinkRow extends StatelessWidget {
           children: <Widget>[
             Text(label,
                 style: FType.titleSm.copyWith(fontWeight: FontWeight.w400)),
-            const Icon(Icons.open_in_new_rounded,
-                size: 14, color: FColors.inkFaint),
+            Icon(icon, size: 15, color: FColors.inkFaint),
           ],
         ),
       ),

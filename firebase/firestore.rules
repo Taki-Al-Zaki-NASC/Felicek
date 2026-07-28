@@ -92,6 +92,21 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      // Agency team seats. The agency manages them; the invited person may
+      // claim their own seat at sign-up (filling in uid/name), and nothing
+      // more — they cannot promote themselves or edit the role.
+      match /seats/{seatId} {
+        allow read: if signedIn();
+        allow create, delete: if isSelf(uid);
+        allow update: if isSelf(uid)
+          || (
+            signedIn()
+            && resource.data.email == request.auth.token.email
+            && onlyFieldsChanged(['memberUid', 'displayName', 'accepted', 'acceptedAt'])
+            && request.resource.data.memberUid == request.auth.uid
+          );
+      }
+
       match /notifications/{notificationId} {
         allow read, update, delete: if isSelf(uid);
         // Any signed-in user may drop a notification into someone else's
@@ -197,6 +212,29 @@ service cloud.firestore {
       allow create: if isSelf(request.resource.data.uid)
         && request.resource.data.status == 'pending';
       allow update, delete: if false;
+    }
+
+    // ── reviews/{jobId__authorId} ─────────────────────────────────────────
+    // Public so a profile can show them. The deterministic id is what stops
+    // brigading: one review per person per job, and re-submitting edits it.
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+
+      allow create, update: if isSelf(request.resource.data.authorId)
+        && reviewId == request.resource.data.jobId + '__' + request.auth.uid
+        // You cannot review yourself into a better score.
+        && request.resource.data.subjectId != request.auth.uid
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        // Only the two people actually on the engagement may review it.
+        && (
+          isSelf(get(/databases/$(database)/documents/jobs/$(request.resource.data.jobId)).data.ownerId)
+          || isSelf(get(/databases/$(database)/documents/jobs/$(request.resource.data.jobId)).data.hiredFreelancerId)
+        );
+
+      allow delete: if false;
     }
 
     // ── calls/{callId} — WebRTC signaling ────────────────────────────────

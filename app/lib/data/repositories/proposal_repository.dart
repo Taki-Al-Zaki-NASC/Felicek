@@ -177,16 +177,6 @@ class ProposalRepository {
     }
   }
 
-  Future<void> attachChat(
-          {required String proposalId, required String chatId}) =>
-      _db.proposal(proposalId).set(
-        <String, dynamic>{
-          'chatId': chatId,
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-
   // ── Challenge submission (owner-blind for written/code answers) ─────────
 
   /// Records a free-text / code answer for [ChallengeMode.writtenPrompt].

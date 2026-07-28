@@ -14,7 +14,9 @@ import '../../core/widgets/f_surface.dart';
 import '../../data/models/app_user.dart';
 import '../../data/models/payment_intent.dart';
 import '../../data/models/user_role.dart';
+import '../../data/models/wallet.dart';
 import '../../data/repositories/user_repository.dart';
+import '../../data/repositories/wallet_repository.dart';
 import '../../data/services/payment_gateway_service.dart';
 
 /// Identity verification and the mandatory deposit that unlocks the account.
@@ -186,6 +188,7 @@ class _KycScreenState extends State<KycScreen> {
     // await risks touching a disposed element.
     final PaymentGatewayService gateway = context.paymentGateway;
     final UserRepository users = context.userRepo;
+    final WalletRepository wallet = context.walletRepo;
     try {
       final PaymentIntent? intent = await gateway.fetchStatus(ref);
       if (intent == null) {
@@ -201,6 +204,14 @@ class _KycScreenState extends State<KycScreen> {
             method: intent.method ?? 'Gateway',
             amountCents: intent.amountCents,
             paymentRef: ref,
+          );
+          // Show the deposit in the wallet ledger too — money left the
+          // person's account, so it belongs on their statement.
+          await wallet.recordTrustDeposit(
+            uid: user.uid,
+            method: PayoutMethod.fromLabel(intent.method),
+            amountCents: intent.amountCents,
+            isTrustBond: role.depositKind == DepositKind.trustBond,
           );
           if (mounted) {
             AppFeedback.success(

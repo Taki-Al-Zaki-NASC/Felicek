@@ -1,0 +1,41 @@
+{
+  "_comment": [
+    "EMULATOR-ONLY Firebase config. These are not real credentials and grant",
+    "access to nothing — a project id starting with 'demo-' makes the Firebase",
+    "emulator suite refuse to contact production, so the SDK never leaves your",
+    "machine.",
+    "",
+    "This exists so you can run the whole app end to end with no cloud project",
+    "at all: ./scripts/dev_emulator.sh copies it into place and launches the",
+    "app against the local Auth + Firestore emulators.",
+    "",
+    "Never ship a build made with this file."
+  ],
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "demo-felicek",
+    "storage_bucket": "demo-felicek.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "app.felicek.felicek"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEMO-emulator-only-key-not-a-real-secret"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -6,17 +6,22 @@ import '../../app/session_controller.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/theme/typography.dart';
 import '../../core/utils/feedback.dart';
+import '../../core/utils/validators.dart';
 import '../../core/widgets/f_avatar.dart';
 import '../../core/widgets/f_button.dart';
+import '../../core/widgets/f_field.dart';
 import '../../core/widgets/f_pill.dart';
 import '../../core/widgets/f_surface.dart';
 import '../../data/models/app_user.dart';
 import '../../data/models/job.dart';
+import '../../data/models/team_seat.dart';
 import '../../data/models/user_role.dart';
+import '../../data/repositories/user_repository.dart';
 import '../job/job_card.dart';
 import '../job/job_detail_screen.dart';
 import '../job/post_job_screen.dart';
 import '../kyc/kyc_screen.dart';
+import '../notifications/notifications_screen.dart';
 import '../search/search_screen.dart';
 
 /// The Home tab: freelancers get the browse feed, everyone else gets their
@@ -98,7 +103,9 @@ class _Header extends StatelessWidget {
               Row(
                 children: <Widget>[
                   FRoleBadge(user.role.shortLabel),
-                  const SizedBox(width: FSpace.xl),
+                  const SizedBox(width: FSpace.md),
+                  const NotificationBell(),
+                  const SizedBox(width: FSpace.sm),
                   InkWell(
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
@@ -338,6 +345,12 @@ class _Dashboard extends StatelessWidget {
                 );
               },
             ),
+            if (user.role == UserRole.agency) ...<Widget>[
+              const SizedBox(height: FSpace.x3),
+              const FSectionLabel('Team Seats'),
+              const SizedBox(height: FSpace.lg),
+              _TeamSeats(agency: user),
+            ],
             if (user.role == UserRole.startup) ...<Widget>[
               const SizedBox(height: FSpace.x3),
               Container(
@@ -394,6 +407,157 @@ class _Dashboard extends StatelessWidget {
                   ],
                 ],
               ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Agency team seats.
+///
+/// The design showed a static roster. A seat here is a real invite: the agency
+/// records the teammate's email, and when that person signs up with it their
+/// account is linked to the agency. Until then the seat reads "Invited", which
+/// is the honest state rather than a name that implies someone is on board.
+class _TeamSeats extends StatelessWidget {
+  const _TeamSeats({required this.agency});
+
+  final AppUser agency;
+
+  Future<void> _invite(BuildContext context) async {
+    final TextEditingController email = TextEditingController();
+    final TextEditingController role = TextEditingController();
+    final UserRepository users = context.userRepo;
+
+    final bool? send = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Invite a teammate', style: FType.titleMd),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            FField(
+              controller: email,
+              label: 'Email',
+              hint: 'teammate@example.com',
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+            ),
+            const SizedBox(height: FSpace.xl),
+            FField(controller: role, label: 'Role', hint: 'e.g. Backend Lead'),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              'Cancel',
+              style: FType.buttonSm
+                  .copyWith(fontSize: 13, color: FColors.inkMuted),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              'Send invite',
+              style: FType.buttonSm
+                  .copyWith(fontSize: 13, color: FColors.tealDeep),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final String address = email.text.trim();
+    final String seatRole = role.text.trim();
+    email.dispose();
+    role.dispose();
+
+    if (send != true || address.isEmpty) return;
+    if (Validate.email(address) != null) {
+      if (context.mounted) {
+        AppFeedback.error(context, 'That email address does not look right.');
+      }
+      return;
+    }
+
+    try {
+      await users.inviteTeamSeat(
+        agencyUid: agency.uid,
+        email: address,
+        role: seatRole.isEmpty ? 'Team member' : seatRole,
+      );
+      if (context.mounted) AppFeedback.success(context, 'Invite recorded.');
+    } on Object {
+      if (context.mounted) {
+        AppFeedback.error(context, 'Could not save that invite. Try again.');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<TeamSeat>>(
+      stream: context.userRepo.watchTeamSeats(agency.uid),
+      builder: (BuildContext context, AsyncSnapshot<List<TeamSeat>> snap) {
+        final List<TeamSeat> seats = snap.data ?? const <TeamSeat>[];
+        return Column(
+          children: <Widget>[
+            for (final TeamSeat seat in seats) ...<Widget>[
+              FCard(
+                radius: FRadius.button,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+                child: Row(
+                  children: <Widget>[
+                    FAvatar(
+                      size: 30,
+                      seed: seat.email,
+                      initials: FAvatar.initialsFor(
+                        seat.displayName ?? seat.email,
+                      ),
+                      verified: seat.accepted,
+                    ),
+                    const SizedBox(width: FSpace.lg),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Text(
+                            seat.displayName ?? seat.email,
+                            style: FType.titleXs,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(seat.role, style: FType.captionSm),
+                        ],
+                      ),
+                    ),
+                    seat.accepted
+                        ? FPill.teal('Active', fontSize: 10)
+                        : FPill.amber('Invited', fontSize: 10),
+                    IconButton(
+                      onPressed: () => context.userRepo.removeTeamSeat(
+                          agencyUid: agency.uid, seatId: seat.id),
+                      icon: const Icon(Icons.close_rounded, size: 15),
+                      color: FColors.inkFaint,
+                      visualDensity: VisualDensity.compact,
+                      tooltip: 'Remove seat',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: FSpace.md),
+            ],
+            FButton(
+              label: '+ Invite a teammate',
+              variant: FButtonVariant.secondary,
+              padding: const EdgeInsets.all(12),
+              fontSize: 12.5,
+              onPressed: () => _invite(context),
+            ),
           ],
         );
       },

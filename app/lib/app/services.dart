@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/chat_repository.dart';
+import '../data/repositories/engagement_repository.dart';
 import '../data/repositories/job_repository.dart';
 import '../data/repositories/notification_repository.dart';
 import '../data/repositories/proposal_repository.dart';
@@ -40,6 +41,7 @@ class AppServices {
       chatRepository: ChatRepository(db),
       walletRepository: WalletRepository(db),
       notificationRepository: NotificationRepository(db),
+      engagementRepository: EngagementRepository(db),
       paymentGatewayService: PaymentGatewayService(db),
       callService: CallService(db),
     );
@@ -57,6 +59,7 @@ class AppServices {
     required this.chatRepository,
     required this.walletRepository,
     required this.notificationRepository,
+    required this.engagementRepository,
     required this.paymentGatewayService,
     required this.callService,
   });
@@ -73,6 +76,7 @@ class AppServices {
   final ChatRepository chatRepository;
   final WalletRepository walletRepository;
   final NotificationRepository notificationRepository;
+  final EngagementRepository engagementRepository;
   final PaymentGatewayService paymentGatewayService;
   final CallService callService;
 
@@ -99,6 +103,8 @@ extension AppServicesX on BuildContext {
 
   NotificationRepository get notificationRepo =>
       services.notificationRepository;
+
+  EngagementRepository get engagementRepo => services.engagementRepository;
 
   UpdateService get updateService => services.updateService;
 

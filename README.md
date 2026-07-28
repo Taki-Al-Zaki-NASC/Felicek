@@ -90,16 +90,40 @@ and hands the APK to Android's package installer. See
 still shows one system confirmation dialog; no sideloaded app can silently
 replace itself, and this repo doesn't pretend otherwise.
 
+### The engagement loop
+
+Hire → escrow funded from the client's posting balance → milestones released
+one at a time → final release closes the job, moves the freelancer's job
+count, and unlocks their trust bond → both sides review each other. All of
+that moves in single Firestore transactions, so a double-tapped Hire or
+Release cannot pay twice.
+
 ## Getting started
 
+**No Firebase project needed** — the emulator suite gives you real Auth and
+Firestore locally, seeded with four verified demo accounts:
+
 ```bash
-cd app
-flutter pub get
-flutter run
+./scripts/dev_emulator.sh
+# then, in a second terminal:
+cd app && flutter run --dart-define=FELICEK_EMULATORS=true
 ```
 
-Full setup — Firebase project, rules deployment, signing keys — is in
-[docs/SETUP.md](docs/SETUP.md).
+**With a real project** — one command, then one console click to enable
+Email/Password sign-in:
+
+```bash
+./scripts/setup_firebase.sh
+```
+
+**Build an APK** — installs the Android SDK if it's missing:
+
+```bash
+./scripts/build_apk.sh          # debug
+./scripts/build_apk.sh release  # signed release
+```
+
+Details in [docs/SETUP.md](docs/SETUP.md) and [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Free-tier posture
 
@@ -140,7 +164,12 @@ violates Play policy. The updater is fully gated behind that flag.
 ## Verification
 
 ```bash
-cd app
-flutter analyze   # 0 issues
-flutter test      # 52 tests
+cd app && flutter analyze && flutter test        # 0 issues, 63 tests
+cd firebase/tests && npm install && npm test     # 61 rules tests
 ```
+
+The rules suite runs against a throwaway Firestore emulator — no project, no
+login, no network. It is what actually verifies the security guarantees above:
+that a client cannot mark its own payment paid, that a job owner cannot read a
+freelancer's full submission, that an applicant cannot read the answer key.
+See [firebase/tests/README.md](firebase/tests/README.md).

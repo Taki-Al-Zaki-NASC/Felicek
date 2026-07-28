@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../app/services.dart';
 import '../../app/session_controller.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/theme/typography.dart';
@@ -10,6 +11,7 @@ import '../../core/widgets/f_avatar.dart';
 import '../../core/widgets/f_pill.dart';
 import '../../core/widgets/f_surface.dart';
 import '../../data/models/app_user.dart';
+import '../../data/models/review.dart';
 import '../../data/models/user_role.dart';
 import '../kyc/kyc_screen.dart';
 import '../onboarding/role_card.dart';
@@ -87,7 +89,7 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: FSpace.x3),
                 const FSectionLabel('Work History & Reviews'),
                 const SizedBox(height: FSpace.lg),
-                const _ReviewsPlaceholder(),
+                _Reviews(uid: user.uid),
                 const SizedBox(height: FSpace.x2),
                 InkWell(
                   onTap: () => Navigator.of(context).push(
@@ -323,15 +325,70 @@ class _IdentityCard extends StatelessWidget {
   }
 }
 
-class _ReviewsPlaceholder extends StatelessWidget {
-  const _ReviewsPlaceholder();
+class _Reviews extends StatelessWidget {
+  const _Reviews({required this.uid});
+
+  final String uid;
 
   @override
   Widget build(BuildContext context) {
-    return const FEmptyState(
-      icon: Icons.star_border_rounded,
-      title: 'No reviews yet',
-      message: 'Reviews from completed jobs will appear here.',
+    return StreamBuilder<List<Review>>(
+      stream: context.engagementRepo.watchReviewsFor(uid),
+      builder: (BuildContext context, AsyncSnapshot<List<Review>> snap) {
+        if (!snap.hasData) return const FLoading(padding: 16);
+        final List<Review> reviews = snap.data!;
+        if (reviews.isEmpty) {
+          return const FEmptyState(
+            icon: Icons.star_border_rounded,
+            title: 'No reviews yet',
+            message: 'Reviews from completed jobs will appear here.',
+          );
+        }
+        return Column(
+          children: <Widget>[
+            for (final Review r in reviews) ...<Widget>[
+              FCard(
+                radius: FRadius.button,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            r.jobTitle,
+                            style: FType.titleXs,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: FSpace.md),
+                        Text(
+                          r.stars,
+                          style: FType.pill
+                              .copyWith(fontSize: 12, color: FColors.amber),
+                        ),
+                      ],
+                    ),
+                    if (r.comment.isNotEmpty) ...<Widget>[
+                      const SizedBox(height: FSpace.sm),
+                      Text(r.comment, style: FType.support),
+                    ],
+                    const SizedBox(height: FSpace.sm),
+                    Text(
+                      '${r.authorName} · ${Fmt.money(r.amount)}',
+                      style: FType.captionSm,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: FSpace.lg),
+            ],
+          ],
+        );
+      },
     );
   }
 }

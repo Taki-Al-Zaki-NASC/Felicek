@@ -2,6 +2,37 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Felicek uses the camera for video calls with clients and freelancers, and to take your profile photo.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Felicek uses the microphone for audio and video calls with clients and freelancers.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Felicek needs access to your photos so you can choose a profile picture.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Felicek saves images you export from a conversation to your photo library.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>voip</string>
+	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>app.felicek.felicek</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>felicek</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>mailto</string>
+	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

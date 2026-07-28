@@ -5,6 +5,7 @@ import '../models/app_user.dart';
 import '../models/public_profile.dart';
 import '../models/user_role.dart';
 import '../services/firestore_refs.dart';
+import 'user_repository.dart';
 
 /// A failure that already carries a message safe to show a person.
 class AuthFailure implements Exception {
@@ -49,7 +50,16 @@ class AuthRepository {
       final User user = cred.user!;
       await user.updateDisplayName(displayName.trim());
       await _createProfile(
-          user: user, displayName: displayName.trim(), role: role);
+        user: user,
+        displayName: displayName.trim(),
+        role: role,
+      );
+      // If an agency invited this address to a team seat, fill it in now.
+      await UserRepository(_db).claimTeamSeat(
+        uid: user.uid,
+        email: user.email ?? email,
+        displayName: displayName.trim(),
+      );
       unawaitedVerificationEmail(user);
       return user;
     } on FirebaseAuthException catch (e) {

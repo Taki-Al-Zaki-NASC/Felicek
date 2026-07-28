@@ -153,6 +153,9 @@ class Job {
     this.ownerStatusLabel = 'Active now',
     this.weeklyApplicants = const <int>[0, 0, 0, 0, 0, 0, 0],
     this.searchTerms = const <String>[],
+    this.hiredProposalId,
+    this.hiredFreelancerId,
+    this.escrowHeldCents = 0,
     this.createdAt,
     this.updatedAt,
   });
@@ -196,6 +199,9 @@ class Job {
       searchTerms: (d['searchTerms'] as List<dynamic>? ?? <dynamic>[])
           .map((dynamic e) => e.toString())
           .toList(growable: false),
+      hiredProposalId: d['hiredProposalId'] as String?,
+      hiredFreelancerId: d['hiredFreelancerId'] as String?,
+      escrowHeldCents: (d['escrowHeldCents'] as num?)?.toInt() ?? 0,
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (d['updatedAt'] as Timestamp?)?.toDate(),
     );
@@ -228,12 +234,27 @@ class Job {
   final String ownerStatusLabel;
   final List<int> weeklyApplicants;
   final List<String> searchTerms;
+
+  /// Set once someone is hired — the engagement half of a listing.
+  final String? hiredProposalId;
+  final String? hiredFreelancerId;
+
+  /// Client money currently held against this listing's milestones.
+  final int escrowHeldCents;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
   bool get hasChallenge => challenge.enabled && challenge.prompt.isNotEmpty;
   bool get hasEquity => equity != null && equity!.isNotEmpty;
   bool get isOpen => status == JobStatus.open;
+
+  bool get isHired => hiredProposalId != null;
+
+  double get escrowHeld => escrowHeldCents / 100;
+
+  /// True once every milestone has been paid out.
+  bool get isFullyReleased =>
+      milestones.isNotEmpty && milestones.every((Milestone m) => m.released);
 
   /// Average of the submitted bids, filled in by the proposal repository.
   String get avgBidPlaceholder => proposalsCount == 0 ? '—' : budget;

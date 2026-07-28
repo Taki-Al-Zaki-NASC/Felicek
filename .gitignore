@@ -19,7 +19,8 @@ app/android/key.properties
 *.p12
 *.pem
 
-# Per-project Firebase config.
+# Per-project Firebase config. The .example and the emulator-only copy under
+# firebase/emulator/ ARE committed — only the real one is ignored.
 app/android/app/google-services.json
 app/ios/Runner/GoogleService-Info.plist
 app/macos/Runner/GoogleService-Info.plist
@@ -55,3 +56,8 @@ app/windows/flutter/ephemeral/
 .DS_Store
 Thumbs.db
 *.swp
+
+# ── Node (Firestore rules tests) ─────────────────────────────────────────
+firebase/tests/node_modules/
+firebase/**/*-debug.log
+firebase/tests/firebase.json
