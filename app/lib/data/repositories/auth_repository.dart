@@ -248,6 +248,14 @@ class AuthRepository {
           'No connection. Check your network and try again.',
         'operation-not-allowed' =>
           'Email sign-in is not enabled for this project yet.',
+        // Firebase returns this when Authentication has never been turned on
+        // for the project at all — a step earlier than enabling a specific
+        // sign-in method, and easy to mistake for a network problem because
+        // the raw message otherwise leaks straight to the screen.
+        'configuration-not-found' =>
+          'This app is not connected to a working backend yet '
+              '(Authentication has not been set up for this Firebase '
+              'project). This is a setup issue, not your connection.',
         _ => e.message ?? 'Could not complete that. Please try again.',
       };
 }
