@@ -46,6 +46,16 @@ concurrency:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    env:
+      # Whether to attach the APK to the dev-build prerelease.
+      #
+      # This cannot be written as `inputs.publish != false` on the step: for a
+      # push event `inputs.publish` is empty, and GitHub coerces both '' and
+      # false to 0 when comparing, so the condition reads false and the publish
+      # silently skips — which is exactly what happened on the first green
+      # build. Gate on the event instead: pushes always publish, and a manual
+      # dispatch honours its checkbox.
+      PUBLISH: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
     steps:
       - uses: actions/checkout@v4
 
@@ -165,7 +175,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish to the rolling dev-build prerelease
-        if: ${{ inputs.publish != false }}
+        if: env.PUBLISH == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: dev-build
@@ -180,7 +190,7 @@ jobs:
             | Version | `${{ steps.version.outputs.name }}` (versionCode `${{ steps.version.outputs.code }}`) |
             | Build type | `${{ inputs.buildType || 'release' }}` |
             | Signing | `${{ steps.signing.outputs.signed }}` key |
-            | Firebase | ${{ steps.signing.outputs.signed == 'release' && ' ' || '' }}${{ steps.firebase.outputs.configured == 'true' && 'configured' || '**not configured** — see below' }} |
+            | Firebase | ${{ steps.firebase.outputs.configured == 'true' && 'configured' || '**not configured** — see below' }} |
             | Size | ${{ steps.artifact.outputs.mb }} MB |
             | Commit | `${{ github.sha }}` |
 
@@ -218,5 +228,5 @@ jobs:
             echo
             echo "**SHA-256:** \`${{ steps.artifact.outputs.sha256 }}\`"
             echo
-            echo "Download: the **felicek-apk** artifact above, or the [dev-build prerelease](${{ github.server_url }}/${{ github.repository }}/releases/tag/dev-build)."
+            echo "Download: the **felicek-apk** artifact above${{ env.PUBLISH == 'true' && format(', or the [dev-build prerelease]({0}/{1}/releases/tag/dev-build) — no login needed', github.server_url, github.repository) || ' (publishing to the dev-build release was disabled for this run)' }}."
           } >> "$GITHUB_STEP_SUMMARY"
