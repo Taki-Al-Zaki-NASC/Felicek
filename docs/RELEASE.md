@@ -16,6 +16,26 @@ suite, computes the SHA-256, publishes a GitHub Release, rewrites
 `website/update.json`, and deploys the site to GitHub Pages. Every installed
 copy of the app picks the update up on its next check.
 
+## Before any of that: a test APK, no secrets required
+
+`Actions → Build APK → Run workflow` (or any push to a `claude/**` branch)
+produces an installable APK and attaches it to a rolling
+[`dev-build`](https://github.com/Taki-Al-Zaki-NASC/Felicek/releases/tag/dev-build)
+prerelease, so the download URL never changes.
+
+It builds with whatever is configured and warns about what isn't:
+
+| Missing | Consequence |
+|---|---|
+| `GOOGLE_SERVICES_JSON` | App installs and opens, then shows its "Firebase is not configured" screen |
+| `KEYSTORE_BASE64` | Signed with the debug key |
+
+Debug signing is the important caveat. Each CI run generates its own debug
+key, so **one dev build cannot update another** — and none of them can update
+to a release-signed build later. Reinstalling is the only path across a
+signing change. Dev builds are for putting the app on a device to look at, not
+for anything you hand to a user.
+
 ## One-time setup
 
 ### Signing key
@@ -26,15 +46,17 @@ stranded** (users must uninstall and reinstall, losing local state). **Leak it
 and anyone can ship a "Felicek update" that phones will accept.**
 
 ```bash
-keytool -genkey -v -keystore ~/felicek-release.jks \
-  -keyalg RSA -keysize 2048 -validity 10000 -alias felicek
-
-# For CI:
-base64 -w0 ~/felicek-release.jks   # macOS: base64 -i ~/felicek-release.jks
+./scripts/make_keystore.sh
 ```
 
+This creates `app/android/felicek-release.jks` and `app/android/key.properties`
+(both git-ignored), then writes `keystore-secrets.txt` with the four values to
+paste into GitHub secrets. It refuses to run if a keystore already exists —
+regenerating one silently is how installs get stranded.
+
 Store the keystore in a password manager, and keep an offline copy somewhere
-you would still have after losing your laptop.
+you would still have after losing your laptop. Delete `keystore-secrets.txt`
+once the secrets are saved.
 
 ### Repository secrets
 

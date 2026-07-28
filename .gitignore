@@ -18,6 +18,9 @@ app/android/key.properties
 *.keystore
 *.p12
 *.pem
+# Written by scripts/make_keystore.sh: contains the keystore password and the
+# whole key base64-encoded, ready to paste into GitHub secrets.
+keystore-secrets.txt
 
 # Per-project Firebase config. The .example and the emulator-only copy under
 # firebase/emulator/ ARE committed — only the real one is ignored.

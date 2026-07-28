@@ -52,6 +52,22 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
 
+dependency_overrides:
+  # jni is pulled in transitively (path_provider_android → jni_flutter → jni).
+  #
+  # 1.0.1 is RETRACTED on pub.dev and breaks every Android release build under
+  # AGP 9: its android/build.gradle only applies `kotlin-android` when the AGP
+  # major is < 9, but then calls `kotlin { compilerOptions { … } }`
+  # unconditionally, so Gradle fails with "Could not find method kotlin()".
+  # 1.0.0 has no Kotlin block at all and is currently the latest published
+  # version, so pinning it is a downgrade in name only.
+  #
+  # This override is needed rather than just re-resolving because pub keeps a
+  # retracted version that is already in pubspec.lock.
+  #
+  # Remove it once a jni > 1.0.1 is published — nothing else depends on it.
+  jni: 1.0.0
+
 flutter:
   uses-material-design: true
 
