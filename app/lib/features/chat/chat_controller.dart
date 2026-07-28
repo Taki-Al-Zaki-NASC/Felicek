@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../core/utils/image_codec.dart';
+import '../../core/utils/watermark.dart';
 import '../../data/models/chat.dart';
 import '../../data/models/message.dart';
 import '../../data/repositories/chat_repository.dart';
@@ -314,6 +316,58 @@ class ChatController extends ChangeNotifier {
 
     notifyListeners();
     return '';
+  }
+
+  /// Shares an image.
+  ///
+  /// [watermark] marks the preview and withholds the clean original until a
+  /// milestone is released — see ChatRepository.sendImage.
+  Future<bool> sendImage({
+    required Uint8List bytes,
+    String? attachmentName,
+    bool watermark = false,
+  }) async {
+    final String? preview = watermark
+        ? Watermark.applyToBase64(bytes)
+        : ImageCodec.downsizeDocumentToBase64(bytes);
+    if (preview == null) {
+      _error = 'That file could not be read as an image.';
+      notifyListeners();
+      return false;
+    }
+
+    final String? clean =
+        watermark ? ImageCodec.downsizeDocumentToBase64(bytes) : null;
+
+    final ({String messageId, Future<void> committed}) result = _repo.sendImage(
+      chatId: chatId,
+      senderId: myUid,
+      senderName: myName,
+      recipientId: otherUid,
+      imageBase64: preview,
+      cleanImageBase64: clean,
+      attachmentName: attachmentName,
+      watermark: watermark,
+    );
+
+    unawaited(
+      _repo.notifyNewMessage(
+        recipientId: otherUid,
+        actorId: myUid,
+        actorName: myName,
+        chatId: chatId,
+        preview: watermark ? 'Sent a preview' : 'Sent a photo',
+      ),
+    );
+
+    try {
+      await result.committed;
+      return true;
+    } on Object catch (e) {
+      _error = describeFirestoreError(e);
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<void> sendOffer(

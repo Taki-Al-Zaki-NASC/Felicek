@@ -97,6 +97,9 @@ class Message {
     required this.senderId,
     required this.senderName,
     required this.text,
+    this.imageBase64,
+    this.attachmentName,
+    this.watermarked = false,
     this.type = MessageType.text,
     this.sentAt,
     this.clientSentAt,
@@ -115,6 +118,9 @@ class Message {
       senderId: d['senderId'] as String? ?? '',
       senderName: d['senderName'] as String? ?? '',
       text: d['text'] as String? ?? '',
+      imageBase64: d['imageBase64'] as String?,
+      attachmentName: d['attachmentName'] as String?,
+      watermarked: d['watermarked'] as bool? ?? false,
       type: MessageType.values.firstWhere(
         (MessageType t) => t.name == d['type'],
         orElse: () => MessageType.text,
@@ -137,6 +143,15 @@ class Message {
   final String senderId;
   final String senderName;
   final String text;
+
+  /// A shared image, stored inline. Watermarked when [watermarked] is true —
+  /// the clean original then lives in the chat's `deliverables` subcollection,
+  /// which the recipient cannot read until it is released.
+  final String? imageBase64;
+  final String? attachmentName;
+  final bool watermarked;
+
+  bool get hasImage => imageBase64 != null && imageBase64!.isNotEmpty;
   final MessageType type;
 
   /// Server timestamp — null while the write is still queued offline.
@@ -210,6 +225,9 @@ class Message {
         'senderId': senderId,
         'senderName': senderName,
         'text': text,
+        if (imageBase64 != null) 'imageBase64': imageBase64,
+        if (attachmentName != null) 'attachmentName': attachmentName,
+        if (watermarked) 'watermarked': true,
         'type': type.name,
         'sentAt': serverTimestamp
             ? FieldValue.serverTimestamp()
@@ -232,6 +250,9 @@ class Message {
         senderId: senderId,
         senderName: senderName,
         text: text ?? this.text,
+        imageBase64: imageBase64,
+        attachmentName: attachmentName,
+        watermarked: watermarked,
         type: type,
         sentAt: sentAt,
         clientSentAt: clientSentAt,

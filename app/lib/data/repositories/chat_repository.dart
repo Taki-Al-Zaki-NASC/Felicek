@@ -197,6 +197,95 @@ class ChatRepository {
     );
   }
 
+  /// Sends an image.
+  ///
+  /// When [watermark] is true the recipient gets a marked preview and the
+  /// clean original is written to `chats/{id}/deliverables/{msgId}`, which
+  /// rules keep unreadable to them until `released` is set. That is the whole
+  /// mechanism: the client can see the work well enough to approve it, and
+  /// gets the usable file when they release the milestone.
+  ///
+  /// The watermark is leverage, not DRM — a preview on screen can always be
+  /// screenshotted. It makes the preview obviously unusable as a deliverable,
+  /// which is a different and achievable goal.
+  ({String messageId, Future<void> committed}) sendImage({
+    required String chatId,
+    required String senderId,
+    required String senderName,
+    required String recipientId,
+    required String imageBase64,
+    String? cleanImageBase64,
+    String? attachmentName,
+    String text = '',
+    bool watermark = false,
+  }) {
+    final String id = _db.messages(chatId).doc().id;
+    final Message message = Message(
+      id: id,
+      senderId: senderId,
+      senderName: senderName,
+      text: text.trim(),
+      imageBase64: imageBase64,
+      attachmentName: attachmentName,
+      watermarked: watermark,
+      clientSentAt: DateTime.now(),
+    );
+
+    Future<void> commit() async {
+      if (watermark && cleanImageBase64 != null) {
+        // Written first: if this fails, no preview is sent promising a clean
+        // copy that was never stored.
+        await _db.chats
+            .doc(chatId)
+            .collection('deliverables')
+            .doc(id)
+            .set(<String, dynamic>{
+          'senderId': senderId,
+          'recipientId': recipientId,
+          'imageBase64': cleanImageBase64,
+          'released': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+      await _commit(
+        chatId: chatId,
+        recipientId: recipientId,
+        message: message.copyWith(),
+      );
+    }
+
+    return (messageId: id, committed: commit());
+  }
+
+  /// Hands over the clean original — called when a milestone is released.
+  Future<void> releaseDeliverables(String chatId) async {
+    final QuerySnapshot<Json> pending = await _db.chats
+        .doc(chatId)
+        .collection('deliverables')
+        .where('released', isEqualTo: false)
+        .get();
+    final WriteBatch batch = _db.firestore.batch();
+    for (final QueryDocumentSnapshot<Json> doc in pending.docs) {
+      batch.update(doc.reference, <String, dynamic>{'released': true});
+    }
+    await batch.commit();
+  }
+
+  /// The clean original, if this account is allowed it. Null when rules deny
+  /// the read, which is the un-released case.
+  Future<String?> cleanDeliverable(String chatId, String messageId) async {
+    try {
+      final DocumentSnapshot<Json> doc = await _db.chats
+          .doc(chatId)
+          .collection('deliverables')
+          .doc(messageId)
+          .get();
+      return doc.data()?['imageBase64'] as String?;
+    } on Object {
+      return null;
+    }
+  }
+
   /// Sends a structured price offer.
   ({String messageId, Future<void> committed}) sendOffer({
     required String chatId,
