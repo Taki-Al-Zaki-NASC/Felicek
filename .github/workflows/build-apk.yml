@@ -134,6 +134,28 @@ jobs:
         working-directory: app
         run: flutter pub get
 
+      - name: Validate platform resources
+        run: |
+          # flutter analyze reads Dart only, so a malformed Android resource
+          # otherwise surfaces four minutes into Gradle. Python's parser
+          # enforces the same XML rules aapt2 does — including the one that
+          # bit us: "--" is not permitted inside a comment.
+          python3 - <<'PY'
+          import glob, sys, xml.etree.ElementTree as ET
+          bad = 0
+          files = [f for p in ('app/android/**/*.xml', 'app/ios/**/*.xml',
+                               'app/macos/**/*.xml')
+                     for f in glob.glob(p, recursive=True) if '/build/' not in f]
+          for f in files:
+              try:
+                  ET.parse(f)
+              except ET.ParseError as e:
+                  print(f'::error file={f}::{e}')
+                  bad += 1
+          print(f'{len(files)} XML resources parsed, {bad} malformed')
+          sys.exit(1 if bad else 0)
+          PY
+
       - name: Analyze
         working-directory: app
         run: flutter analyze

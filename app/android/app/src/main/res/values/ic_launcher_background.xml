@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- --ink-strong from the design tokens. -->
+    <!-- FColors.inkStrong, the "ink-strong" design token. Keep in step with
+         app/lib/core/theme/tokens.dart. -->
     <color name="ic_launcher_background">#1C2534</color>
 </resources>
