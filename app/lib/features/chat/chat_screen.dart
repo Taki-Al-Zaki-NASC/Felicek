@@ -17,6 +17,7 @@ import '../../data/models/public_profile.dart';
 import '../../data/repositories/chat_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../data/services/call_service.dart';
+import '../../data/services/firestore_refs.dart';
 import '../call/call_screen.dart';
 import 'chat_controller.dart';
 import 'widgets/message_bubble.dart';
@@ -104,12 +105,20 @@ class _ChatScreenState extends State<ChatScreen> {
     final String text = _composer.text;
     if (text.trim().isEmpty) return;
     setState(() => _sending = true);
-    final String remaining = await c.send(text);
-    if (!mounted) return;
-    setState(() => _sending = false);
-    _composer.text = remaining;
-    if (remaining.isEmpty && _scroll.hasClients) {
-      _scroll.animateTo(0, duration: FMotion.base, curve: FMotion.curve);
+    try {
+      final String remaining = await c.send(text);
+      if (!mounted) return;
+      _composer.text = remaining;
+      if (remaining.isEmpty && _scroll.hasClients) {
+        _scroll.animateTo(0, duration: FMotion.base, curve: FMotion.curve);
+      }
+    } on Object catch (e) {
+      if (mounted) AppFeedback.error(context, describeFirestoreError(e));
+    } finally {
+      // Without the finally, a throw left _sending true and the send button
+      // became a disabled spinner for the rest of the session — the composer
+      // was dead with no way to recover short of leaving the chat.
+      if (mounted) setState(() => _sending = false);
     }
   }
 

@@ -139,6 +139,54 @@ describe('users/{uid} — private account record', () => {
   });
 });
 
+describe('demo accounts — the deliberate hole, and its edges', () => {
+  // isDemoAccount() lets listed addresses verify without paying. These tests
+  // exist to prove the exception is bounded to that list: if the allowlist
+  // ever widens by accident, the second and third tests fail rather than the
+  // payment guarantee quietly evaporating.
+  const kycPaid = {
+    idSubmitted: true,
+    depositPaid: true,
+    depositAmountCents: 5000,
+    paymentRef: 'demo-no-payment',
+    stage: 'verified',
+  };
+
+  it('the demo address may clear its own deposit with no payment intent', async () => {
+    await seed((db) => setDoc(doc(db, 'users/demo'), unpaidClient('demo')));
+    const demo = testEnv
+      .authenticatedContext('demo', { email: 'demo@felicek.app' })
+      .firestore();
+    await assertSucceeds(updateDoc(doc(demo, 'users/demo'), { kyc: kycPaid }));
+  });
+
+  it('an ordinary account still cannot — the guarantee holds for everyone else', async () => {
+    await seed((db) => setDoc(doc(db, 'users/mallory'), unpaidClient('mallory')));
+    const mallory = testEnv
+      .authenticatedContext('mallory', { email: 'mallory@example.com' })
+      .firestore();
+    await assertFails(
+      updateDoc(doc(mallory, 'users/mallory'), { kyc: kycPaid }),
+    );
+  });
+
+  it('a lookalike address cannot — the match is exact, not a suffix', async () => {
+    await seed((db) => setDoc(doc(db, 'users/evil'), unpaidClient('evil')));
+    const evil = testEnv
+      .authenticatedContext('evil', { email: 'notdemo@felicek.app' })
+      .firestore();
+    await assertFails(updateDoc(doc(evil, 'users/evil'), { kyc: kycPaid }));
+  });
+
+  it('the demo address still cannot forge someone else\'s deposit', async () => {
+    await seed((db) => setDoc(doc(db, 'users/victim'), unpaidClient('victim')));
+    const demo = testEnv
+      .authenticatedContext('demo', { email: 'demo@felicek.app' })
+      .firestore();
+    await assertFails(updateDoc(doc(demo, 'users/victim'), { kyc: kycPaid }));
+  });
+});
+
 describe('paymentIntents — the money guarantee', () => {
   it('a user may create a pending intent for themselves', async () => {
     const alice = testEnv.authenticatedContext('alice').firestore();

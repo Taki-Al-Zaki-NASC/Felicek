@@ -115,11 +115,23 @@ class Db {
 }
 
 /// Turns a Firestore exception into a sentence a person can act on.
+///
+/// Route every user-visible Firestore failure through this. Hand-written
+/// per-screen strings are how "the security rules are not deployed" ends up
+/// reported as "check your connection", which sends people to fiddle with
+/// their wifi over a server-side configuration problem.
 String describeFirestoreError(Object error) {
   if (error is FirebaseException) {
     switch (error.code) {
       case 'permission-denied':
-        return 'You do not have access to that. Try signing in again.';
+        // Overwhelmingly this means the rules were never deployed, not that
+        // the person did something they shouldn't have — a real unauthorised
+        // access attempt is rare, and a deployment gap is not.
+        return 'The server refused that request. If this is a new '
+            'installation, the Firestore security rules have probably not '
+            'been deployed yet.';
+      case 'unauthenticated':
+        return 'Your session expired. Sign in again.';
       case 'unavailable':
       case 'deadline-exceeded':
         return 'You appear to be offline. This will sync once you reconnect.';
@@ -130,11 +142,16 @@ String describeFirestoreError(Object error) {
       case 'resource-exhausted':
         return 'The service is busy right now. Please try again in a moment.';
       case 'failed-precondition':
-        return 'That action is not available yet.';
+        // Nearly always a missing composite index on a new project.
+        return 'That query is not ready yet. If this is a new installation, '
+            'the Firestore indexes may still be building.';
       case 'cancelled':
         return 'The request was cancelled.';
       default:
-        return error.message ?? 'Something went wrong. Please try again.';
+        // Never `error.message` — raw SDK text reaching a user is the bug
+        // this function exists to prevent. The code is diagnostic enough to
+        // look up without being a wall of jargon.
+        return 'Something went wrong (${error.code}). Please try again.';
     }
   }
   return 'Something went wrong. Please try again.';

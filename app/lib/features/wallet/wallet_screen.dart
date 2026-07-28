@@ -15,6 +15,7 @@ import '../../data/models/app_user.dart';
 import '../../data/models/payment_intent.dart';
 import '../../data/models/wallet.dart';
 import '../../data/repositories/wallet_repository.dart';
+import '../../data/services/firestore_refs.dart';
 import '../../data/services/payment_gateway_service.dart';
 
 /// "Wallet & Vault" — balance, the mandatory deposit vault (trust bond for
@@ -394,6 +395,9 @@ class _Transactions extends StatelessWidget {
       stream: context.walletRepo.watchTransactions(uid),
       builder:
           (BuildContext context, AsyncSnapshot<List<WalletTransaction>> snap) {
+        if (snap.hasError) {
+          return FErrorState(message: describeFirestoreError(snap.error!));
+        }
         if (!snap.hasData) return const FLoading();
         final List<WalletTransaction> items = snap.data!;
         if (items.isEmpty) {

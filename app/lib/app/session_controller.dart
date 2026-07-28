@@ -8,6 +8,7 @@ import '../data/models/public_profile.dart';
 import '../data/models/user_role.dart';
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/user_repository.dart';
+import '../data/services/firestore_refs.dart';
 
 /// Which shell the app should be showing.
 enum SessionStage {
@@ -131,9 +132,16 @@ class SessionController extends ChangeNotifier {
       onError: (Object e) {
         // A denied read surfaces here; a missing database usually does not,
         // which is why the watchdog above exists as well.
+        //
+        // This deliberately does NOT use e.toString(): that put
+        // "[cloud_firestore/permission-denied] The caller does not have
+        // permission..." on screen as the entire explanation, on the most
+        // common failure path there is, and overwrote the watchdog's
+        // rules-aware wording with something no user can act on.
         _profileWatchdog?.cancel();
-        _error = e.toString();
+        _error = describeFirestoreError(e);
         _stalled = true;
+        _recomputeStage();
         notifyListeners();
       },
     );
@@ -149,6 +157,13 @@ class SessionController extends ChangeNotifier {
 
   void _recomputeStage() {
     final AppUser? u = _user;
+    // A stream that fails *after* the profile loaded once must not leave the
+    // app showing stale data with no indication anything is wrong, so drop
+    // back to booting and let the stalled screen render with its retry.
+    if (_stalled) {
+      _setStage(SessionStage.booting);
+      return;
+    }
     if (u == null) {
       // Auth exists but the profile document has not arrived yet.
       _setStage(SessionStage.booting);

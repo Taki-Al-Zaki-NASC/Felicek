@@ -47,6 +47,30 @@ service cloud.firestore {
         .hasOnly(fields);
     }
 
+    // ── Demo accounts ────────────────────────────────────────────────────
+    //
+    // A DELIBERATE HOLE IN THE PAYMENT GATE. Read this before keeping it.
+    //
+    // Accounts listed here may mark their own deposit as paid without a
+    // matching PaymentIntent — that is, they can verify themselves for free.
+    // It exists so the app can be demonstrated end to end before a payment
+    // gateway is connected, because the verification gate is otherwise
+    // absolute by design and there is no way in without real money.
+    //
+    // The blast radius is bounded to exactly the addresses on this list, and
+    // the list is matched against `request.auth.token.email`, which Firebase
+    // Auth sets — a client cannot forge it.
+    //
+    // BEFORE TAKING REAL PAYMENTS: empty this list. A demo address left here
+    // is a free verified account for anyone who can register it. It is a
+    // one-line change and it is the whole cost of this convenience.
+    function isDemoAccount() {
+      return signedIn()
+        && request.auth.token.email in [
+          'demo@felicek.app'
+        ];
+    }
+
     // Firestore's Admin SDK (used by the payment gateway's webhook, which
     // runs outside this app) is not subject to these rules at all — so
     // nothing here needs to special-case it. What these rules *do* need to
@@ -68,6 +92,8 @@ service cloud.firestore {
         // `paid`. A client cannot self-report a payment.
         && (
           request.resource.data.kyc.depositPaid == resource.data.kyc.depositPaid
+          // See isDemoAccount() above — bounded, deliberate, and removable.
+          || (request.resource.data.kyc.depositPaid == true && isDemoAccount())
           || (
             request.resource.data.kyc.depositPaid == true
             && exists(/databases/$(database)/documents/paymentIntents/$(request.resource.data.kyc.paymentRef))

@@ -205,13 +205,17 @@ class FPhotoPickerState extends State<FPhotoPicker> {
                 : FColors.inkMuted,
           ),
         ),
-        if (widget.required && !hasPhoto)
+        if (!hasPhoto)
           Padding(
             padding: const EdgeInsets.only(top: 2),
             child: Text(
-              'Required for individual freelancer accounts',
-              style:
-                  FType.captionSm.copyWith(fontSize: 10, color: FColors.danger),
+              widget.required
+                  ? 'Required for individual freelancer accounts'
+                  : 'Optional, but people are likelier to reply',
+              style: FType.captionSm.copyWith(
+                fontSize: 10,
+                color: widget.required ? FColors.danger : FColors.inkFaint,
+              ),
             ),
           ),
         if (_error != null)

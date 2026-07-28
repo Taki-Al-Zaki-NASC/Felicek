@@ -64,6 +64,20 @@ class AuthRepository {
       return user;
     } on FirebaseAuthException catch (e) {
       throw AuthFailure(_message(e), code: e.code);
+    } on FirebaseException catch (e) {
+      // The Auth account now exists but its Firestore documents do not — the
+      // most confusing state this app can be in, because retrying sign-up
+      // reports "email already in use" while sign-in reports a generic
+      // failure, and neither hints at the real cause.
+      //
+      // signIn() heals a missing profile, so say so plainly instead of
+      // letting a raw Firestore error stand in for an explanation.
+      throw AuthFailure(
+        '${describeFirestoreError(e)}\n\n'
+        'Your login was created, so sign in with the same email once this is '
+        'resolved — your profile will finish setting itself up then.',
+        code: e.code,
+      );
     }
   }
 
@@ -94,6 +108,9 @@ class AuthRepository {
       return user;
     } on FirebaseAuthException catch (e) {
       throw AuthFailure(_message(e), code: e.code);
+    } on FirebaseException catch (e) {
+      // Credentials were accepted; only the profile read/write failed.
+      throw AuthFailure(describeFirestoreError(e), code: e.code);
     }
   }
 
@@ -256,6 +273,9 @@ class AuthRepository {
           'This app is not connected to a working backend yet '
               '(Authentication has not been set up for this Firebase '
               'project). This is a setup issue, not your connection.',
-        _ => e.message ?? 'Could not complete that. Please try again.',
+        // Never `e.message`. Returning the SDK's own sentence is what put
+        // "CONFIGURATION_NOT_FOUND" in front of a user as though it were an
+        // explanation. The code is enough to search for without being noise.
+        _ => 'Could not complete that (${e.code}). Please try again.',
       };
 }

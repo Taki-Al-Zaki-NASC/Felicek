@@ -13,6 +13,7 @@ import '../../core/widgets/f_surface.dart';
 import '../../data/models/app_user.dart';
 import '../../data/models/review.dart';
 import '../../data/models/user_role.dart';
+import '../../data/services/firestore_refs.dart';
 import '../kyc/kyc_screen.dart';
 import '../onboarding/role_card.dart';
 import '../profile_setup/profile_setup_screen.dart';
@@ -335,6 +336,9 @@ class _Reviews extends StatelessWidget {
     return StreamBuilder<List<Review>>(
       stream: context.engagementRepo.watchReviewsFor(uid),
       builder: (BuildContext context, AsyncSnapshot<List<Review>> snap) {
+        if (snap.hasError) {
+          return FErrorState(message: describeFirestoreError(snap.error!));
+        }
         if (!snap.hasData) return const FLoading(padding: 16);
         final List<Review> reviews = snap.data!;
         if (reviews.isEmpty) {

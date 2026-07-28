@@ -200,17 +200,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   style: FType.support,
                 ),
                 const SizedBox(height: FSpace.x3),
-                if (_requiresPhoto) ...<Widget>[
-                  Center(
-                    child: FPhotoPicker(
-                      initialBase64: _photoBase64,
-                      required: true,
-                      onChanged: (String? value) =>
-                          setState(() => _photoBase64 = value),
-                    ),
+                // Shown to everyone. Only individual freelancers are *required*
+                // to have one, but a client or agency with no avatar is a
+                // worse counterparty to message, and hiding the control
+                // entirely left most accounts with no way to add a picture at
+                // all.
+                Center(
+                  child: FPhotoPicker(
+                    initialBase64: _photoBase64,
+                    required: _requiresPhoto,
+                    onChanged: (String? value) =>
+                        setState(() => _photoBase64 = value),
                   ),
-                  const SizedBox(height: FSpace.x3),
-                ],
+                ),
+                const SizedBox(height: FSpace.x3),
                 for (final ProfileQuestion q in questions) ...<Widget>[
                   FField(
                     controller: _controllers[q.key],

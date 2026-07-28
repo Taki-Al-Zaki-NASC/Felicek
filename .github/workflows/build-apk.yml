@@ -171,7 +171,14 @@ jobs:
           set -euo pipefail
           RAW=$(grep -m1 '^version:' pubspec.yaml | awk '{print $2}')
           echo "name=${RAW%%+*}" >> "$GITHUB_OUTPUT"
-          echo "code=${RAW##*+}" >> "$GITHUB_OUTPUT"
+          # The versionCode comes from the run number, not pubspec.
+          #
+          # The in-app updater compares versionCode and nothing else, so a
+          # channel where every build is "1" can never offer an update — the
+          # updater would correctly conclude the installed build is current,
+          # forever. github.run_number increases monotonically per workflow,
+          # which is exactly the property required.
+          echo "code=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
 
       - name: Build APK
         working-directory: app
@@ -179,11 +186,17 @@ jobs:
           BUILD_TYPE: ${{ inputs.buildType || 'release' }}
           SITE: ${{ vars.FELICEK_SITE || 'https://felicek.app' }}
           CHECKOUT: ${{ vars.FELICEK_PAYMENT_CHECKOUT_URL || 'https://pay.felicek.app/checkout' }}
+          MANIFEST_URL: ${{ github.server_url }}/${{ github.repository }}/releases/download/dev-build/update.json
         run: |
           set -euo pipefail
+          # The manifest is served from the rolling release rather than from
+          # $SITE, so auto-update works without a registered domain or GitHub
+          # Pages — the asset URL for a fixed tag never changes, and Releases
+          # has no bandwidth cap.
           flutter build apk --"$BUILD_TYPE" \
+            --build-number="${{ steps.version.outputs.code }}" \
             --dart-define=FELICEK_SITE="$SITE" \
-            --dart-define=FELICEK_UPDATE_MANIFEST="$SITE/update.json" \
+            --dart-define=FELICEK_UPDATE_MANIFEST="$MANIFEST_URL" \
             --dart-define=FELICEK_PAYMENT_CHECKOUT_URL="$CHECKOUT"
 
       - name: Stage artifact
@@ -204,6 +217,43 @@ jobs:
             echo "size=$SIZE"
             echo "mb=$(awk "BEGIN{printf \"%.1f\", $SIZE/1048576}")"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Write the update manifest
+        if: env.PUBLISH == 'true'
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          SHA256: ${{ steps.artifact.outputs.sha256 }}
+          SIZE: ${{ steps.artifact.outputs.size }}
+          APK: ${{ steps.artifact.outputs.path }}
+          BASE: ${{ github.server_url }}/${{ github.repository }}/releases/download/dev-build
+        run: |
+          set -euo pipefail
+          # Published alongside the APK on the same rolling tag, so the URL the
+          # installed app polls and the URL it downloads from are updated in
+          # the same operation and cannot disagree.
+          python3 - <<'PY'
+          import json, os, datetime
+          m = {
+              '_comment': 'Dev channel manifest, rewritten by build-apk.yml on '
+                          'every run. versionCode is the workflow run number.',
+              'versionCode': int(os.environ['VERSION_CODE']),
+              'versionName': os.environ['VERSION_NAME'],
+              'apkUrl': f"{os.environ['BASE']}/{os.environ['APK']}",
+              'sha256': os.environ['SHA256'],
+              'sizeBytes': int(os.environ['SIZE']),
+              'releaseNotes': 'Latest development build.',
+              'mandatory': False,
+              'minSupportedVersionCode': 0,
+              'rolloutPercent': 100,
+              'publishedAt': datetime.datetime.now(datetime.timezone.utc)
+                               .isoformat().replace('+00:00', 'Z'),
+          }
+          with open('update.json', 'w') as fh:
+              json.dump(m, fh, indent=2)
+              fh.write('\n')
+          print(json.dumps(m, indent=2))
+          PY
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -251,7 +301,9 @@ jobs:
             ${{ steps.firebase.outputs.configured == 'true' && 'This build has Firebase configured and will work against your project.' || 'This build has **no Firebase config**, so it opens to a "Firebase is not configured" screen. Add a `GOOGLE_SERVICES_JSON` repository secret (contents of `app/android/app/google-services.json`) and re-run this workflow, or run `./scripts/setup_firebase.sh` locally. See `docs/SETUP.md`.' }}
 
             ${{ steps.signing.outputs.signed == 'debug' && '> **Debug-signed.** Fine for testing, but Android will refuse to update it from a release-signed build later — uninstall first when you switch. For anything you publish, set the signing secrets and use the `Release APK` workflow (`docs/RELEASE.md`).' || '' }}
-          files: ${{ steps.artifact.outputs.path }}
+          files: |
+            ${{ steps.artifact.outputs.path }}
+            update.json
 
       - name: Summary
         run: |

@@ -53,6 +53,18 @@ class AppConfig {
     defaultValue: true,
   );
 
+  /// Accounts allowed to clear the mandatory deposit without paying.
+  ///
+  /// Must stay in step with `isDemoAccount()` in `firebase/firestore.rules` —
+  /// that rule is what actually permits the write; this list only decides
+  /// whether the app offers the button. Removing an address here while leaving
+  /// it in the rules still leaves a free verified account available to anyone
+  /// who can register it, so change both.
+  static const List<String> demoAccountEmails = <String>['demo@felicek.app'];
+
+  static bool isDemoAccount(String? email) =>
+      email != null && demoAccountEmails.contains(email.trim().toLowerCase());
+
   /// Points the app at the local Firebase emulator suite.
   static const bool useEmulators = bool.fromEnvironment('FELICEK_EMULATORS');
 

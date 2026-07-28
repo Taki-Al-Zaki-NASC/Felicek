@@ -24,6 +24,7 @@ import '../../data/repositories/job_repository.dart';
 import '../../data/repositories/proposal_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../data/services/call_service.dart';
+import '../../data/services/firestore_refs.dart';
 import '../call/call_screen.dart';
 import '../chat/chat_screen.dart';
 import '../kyc/kyc_screen.dart';
@@ -588,6 +589,10 @@ class _OwnerView extends StatelessWidget {
           stream: context.proposalRepo.watchForJob(job.id),
           builder: (BuildContext context, AsyncSnapshot<List<Proposal>> snap) {
             final List<Proposal> applicants = snap.data ?? const <Proposal>[];
+            if (snap.hasError) {
+              return FErrorState(
+                  message: describeFirestoreError(snap.error!));
+            }
             if (!snap.hasData) return const FLoading();
             if (applicants.isEmpty) {
               return const FEmptyState(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../app/app_config.dart';
 import '../../app/services.dart';
 import '../../app/session_controller.dart';
 import '../../core/theme/tokens.dart';
@@ -17,6 +18,7 @@ import '../../data/models/user_role.dart';
 import '../../data/models/wallet.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../data/repositories/wallet_repository.dart';
+import '../../data/services/firestore_refs.dart';
 import '../../data/services/payment_gateway_service.dart';
 
 /// Identity verification and the mandatory deposit that unlocks the account.
@@ -46,7 +48,11 @@ class _KycScreenState extends State<KycScreen> {
     final AppUser? user = _user;
     if (user == null) return;
     if (user.kyc.idSubmitted) {
-      await context.userRepo.clearIdentityDocument(user.uid);
+      try {
+        await context.userRepo.clearIdentityDocument(user.uid);
+      } on Object catch (e) {
+        if (mounted) AppFeedback.error(context, describeFirestoreError(e));
+      }
       return;
     }
     final String? reference = await _askForReference(type);
@@ -60,10 +66,8 @@ class _KycScreenState extends State<KycScreen> {
       if (mounted) {
         AppFeedback.success(context, '${type.label} submitted for review.');
       }
-    } on Object {
-      if (mounted) {
-        AppFeedback.error(context, 'Could not save that. Try again.');
-      }
+    } on Object catch (e) {
+      if (mounted) AppFeedback.error(context, describeFirestoreError(e));
     }
   }
 
@@ -71,14 +75,24 @@ class _KycScreenState extends State<KycScreen> {
     final AppUser? user = _user;
     if (user == null) return;
     if (user.kyc.birthCertSubmitted) {
-      await context.userRepo.clearBirthCertificate(user.uid);
+      try {
+        await context.userRepo.clearBirthCertificate(user.uid);
+      } on Object catch (e) {
+        if (mounted) AppFeedback.error(context, describeFirestoreError(e));
+      }
       return;
     }
     final String? reference =
         await _askForReference(IdDocumentType.birthCertificate);
     if (reference == null || !mounted) return;
-    await context.userRepo
-        .submitBirthCertificate(uid: user.uid, reference: reference);
+    try {
+      await context.userRepo
+          .submitBirthCertificate(uid: user.uid, reference: reference);
+    } on Object catch (e) {
+      // Previously unguarded: the dialog closed, the row still read "Upload",
+      // and nothing said why.
+      if (mounted) AppFeedback.error(context, describeFirestoreError(e));
+    }
   }
 
   /// The document itself never leaves the device — only the number the
@@ -169,10 +183,59 @@ class _KycScreenState extends State<KycScreen> {
       if (mounted) {
         AppFeedback.error(context, e.message);
       }
+    } on Object catch (e) {
+      // startCheckout writes paymentIntents/{ref} before opening the browser,
+      // so a Firestore failure lands here — not in the catch above. Without
+      // this the button spun briefly and then did nothing at all, on the one
+      // screen that cannot be skipped, leaving the account unverifiable with
+      // no explanation.
+      if (mounted) AppFeedback.error(context, describeFirestoreError(e));
     } finally {
       if (mounted) {
         setState(() => _payBusy = false);
       }
+    }
+  }
+
+  /// Clears the deposit for a demo account without any money moving.
+  ///
+  /// Permitted only for the addresses in `AppConfig.demoAccountEmails`, and
+  /// only because `isDemoAccount()` in firestore.rules allows the write — the
+  /// button is the visible half of a rule, not a client-side bypass. For any
+  /// other account this write is rejected by the server.
+  Future<void> _clearDepositAsDemo(UserRole role) async {
+    final AppUser? user = _user;
+    if (user == null || _payBusy) return;
+    setState(() => _payBusy = true);
+
+    final UserRepository users = context.userRepo;
+    final WalletRepository wallet = context.walletRepo;
+    try {
+      await users.recordDeposit(
+        uid: user.uid,
+        method: 'Demo',
+        amountCents: role.depositCents,
+        paymentRef: 'demo-no-payment',
+      );
+      await wallet.recordTrustDeposit(
+        uid: user.uid,
+        method: PayoutMethod.bank,
+        amountCents: role.depositCents,
+        isTrustBond: role.depositKind == DepositKind.trustBond,
+      );
+      if (mounted) {
+        AppFeedback.success(context, 'Demo account verified — no payment taken.');
+      }
+    } on Object {
+      if (mounted) {
+        AppFeedback.error(
+          context,
+          'The server refused that. Demo access needs this address in '
+          'isDemoAccount() in firestore.rules, and the rules deployed.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _payBusy = false);
     }
   }
 
@@ -319,8 +382,10 @@ class _KycScreenState extends State<KycScreen> {
                   kyc: kyc,
                   busy: _payBusy,
                   hasPendingRef: _pendingRef != null,
+                  isDemo: AppConfig.isDemoAccount(_user?.email),
                   onPay: () => _pay(role),
                   onVerify: () => _verifyPayment(role),
+                  onDemoSkip: () => _clearDepositAsDemo(role),
                 ),
                 const SizedBox(height: FSpace.xl),
                 Text(role.depositExplanation,
@@ -479,16 +544,20 @@ class _DepositCard extends StatelessWidget {
     required this.kyc,
     required this.busy,
     required this.hasPendingRef,
+    required this.isDemo,
     required this.onPay,
     required this.onVerify,
+    required this.onDemoSkip,
   });
 
   final UserRole role;
   final KycState kyc;
   final bool busy;
   final bool hasPendingRef;
+  final bool isDemo;
   final VoidCallback onPay;
   final VoidCallback onVerify;
+  final VoidCallback onDemoSkip;
 
   @override
   Widget build(BuildContext context) {
@@ -551,6 +620,23 @@ class _DepositCard extends StatelessWidget {
                 onPressed: onVerify,
                 padding: const EdgeInsets.all(13),
                 fontSize: 13,
+              ),
+            ],
+            if (isDemo) ...<Widget>[
+              const SizedBox(height: FSpace.lg),
+              FButton(
+                label: 'Skip payment (demo account)',
+                variant: FButtonVariant.secondary,
+                busy: busy,
+                onPressed: ready ? onDemoSkip : null,
+                padding: const EdgeInsets.all(13),
+                fontSize: 13,
+              ),
+              const SizedBox(height: FSpace.sm),
+              Text(
+                'This account is on the demo allowlist, so it can verify '
+                'without paying. No money moves.',
+                style: FType.captionSm.copyWith(color: FColors.inkFaint),
               ),
             ],
           ] else

@@ -10,6 +10,7 @@ import '../../core/widgets/f_pill.dart';
 import '../../core/widgets/f_surface.dart';
 import '../../data/models/app_user.dart';
 import '../../data/models/proposal.dart';
+import '../../data/services/firestore_refs.dart';
 import '../job/job_detail_screen.dart';
 
 /// "My Proposals" for freelancers, "Proposal Queue" for reviewers — including
@@ -112,6 +113,9 @@ class _MineList extends StatelessWidget {
     return StreamBuilder<List<Proposal>>(
       stream: context.proposalRepo.watchMine(freelancerId),
       builder: (BuildContext context, AsyncSnapshot<List<Proposal>> snap) {
+        if (snap.hasError) {
+          return FErrorState(message: describeFirestoreError(snap.error!));
+        }
         if (!snap.hasData) return const FLoading();
         final List<Proposal> items = snap.data!;
         if (items.isEmpty) {
@@ -155,6 +159,9 @@ class _IncomingList extends StatelessWidget {
     return StreamBuilder<List<Proposal>>(
       stream: context.proposalRepo.watchIncoming(ownerId),
       builder: (BuildContext context, AsyncSnapshot<List<Proposal>> snap) {
+        if (snap.hasError) {
+          return FErrorState(message: describeFirestoreError(snap.error!));
+        }
         if (!snap.hasData) return const FLoading();
         final List<Proposal> items = snap.data!;
         if (items.isEmpty) {

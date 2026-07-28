@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- FColors.inkStrong, the "ink-strong" design token. Keep in step with
-         app/lib/core/theme/tokens.dart. -->
-    <color name="ic_launcher_background">#1C2534</color>
+    <!-- The Felicek logo sits on black. This backs the adaptive icon's
+         foreground layer, so it must match the logo's field exactly or the
+         mark appears to float on a different colour under launcher masks. -->
+    <color name="ic_launcher_background">#000000</color>
 </resources>
