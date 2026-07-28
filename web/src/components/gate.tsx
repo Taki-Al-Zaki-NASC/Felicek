@@ -63,11 +63,9 @@ export function Gate({ children }: { children: React.ReactNode }) {
           Every Felicek account needs identity on file and a cleared deposit
           before it can post or bid. There is no skip.
         </p>
-        <p className="mt-5 text-xs text-ink-faint">
-          {user?.displayName ? `Signed in as ${user.displayName}. ` : ''}
-          Verification is not built on the web yet — complete it in the Android
-          app and this page will let you through.
-        </p>
+        <Link href="/verify" className="mt-5 inline-block font-semibold text-teal-deep">
+          Verify {user?.displayName ? `as ${user.displayName}` : 'now'}
+        </Link>
       </Shell>
     );
   }

@@ -4,6 +4,7 @@ import {
 } from 'firebase/firestore';
 import { firebase } from './firebase';
 import type { Job, Milestone, Proposal } from './schema';
+import type { CheckResult, DocumentType } from './identity-check';
 
 /** Turns any thrown value into a sentence. Never surfaces the raw exception. */
 export function describeError(e: unknown): string {
@@ -203,3 +204,64 @@ export async function markRead(chatId: string, uid: string) {
     [`readUpTo.${uid}`]: serverTimestamp(),
   });
 }
+
+/**
+ * Records an identity submission: the number, the captured images, and the
+ * screening verdict.
+ *
+ * Images go to the owner-only `identity` subcollection, never onto the profile
+ * document — the profile is streamed live, so a few hundred KB there would be
+ * re-downloaded on every unrelated change.
+ *
+ * A passing screen sets stage to verified because on the free tier there is no
+ * server running a review queue, and an account that has paid a real deposit
+ * should not block behind a review nobody performs. Documented in
+ * docs/VERIFICATION.md; it is the first thing a real provider replaces.
+ */
+export async function submitIdentity(input: {
+  uid: string;
+  type: DocumentType;
+  reference: string;
+  documentBase64: string;
+  selfieBase64: string;
+  documentCheck: CheckResult;
+  selfieCheck: CheckResult;
+}) {
+  const fb = firebase();
+  if (!fb) throw new Error('Firebase is not configured.');
+
+  const images = collection(fb.db, 'users', input.uid, 'identity');
+  await setDoc(doc(images, 'document'), {
+    kind: 'document', documentType: input.type,
+    imageBase64: input.documentBase64, capturedAt: serverTimestamp(),
+  });
+  await setDoc(doc(images, 'selfie'), {
+    kind: 'selfie', imageBase64: input.selfieBase64, capturedAt: serverTimestamp(),
+  });
+
+  await setDoc(doc(fb.db, 'users', input.uid), {
+    kyc: {
+      idSubmitted: true,
+      idDocumentType: input.type,
+      idReference: input.reference.trim(),
+      hasDocumentImage: true,
+      hasSelfieImage: true,
+      stage: 'verified',
+      autoCheck: {
+        checkedAt: new Date().toISOString(),
+        method: 'web-screening-v1',
+        document: summarise(input.documentCheck),
+        selfie: summarise(input.selfieCheck),
+      },
+      submittedAt: serverTimestamp(),
+    },
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+const summarise = (c: CheckResult) => ({
+  passed: c.passed,
+  sharpness: Number(c.sharpness.toFixed(1)),
+  brightness: Number(c.brightness.toFixed(1)),
+  width: c.width, height: c.height,
+});

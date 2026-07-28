@@ -30,9 +30,22 @@ workflow, search filters, workspace views. The visual language stays Felicek —
 
 ## Status
 
-**Auth is built.** Sign in, sign up with role selection, password reset,
-session provider with the same routing stages as the app (booting → signedOut →
-onboarding → verification → ready), and a 12-second watchdog so a profile that
-never loads shows a reason instead of spinning forever.
+Built and building clean (`npm run typecheck && npm run build && npm test`):
 
-**Not built yet:** dashboards, jobs, proposals, messaging, KYC, escrow.
+| | |
+|---|---|
+| Auth | Sign in, sign up with role selection, session gate, 12s stall watchdog |
+| Dashboards | Role-aware — client sees listings/escrow, freelancer sees bids/open work |
+| Jobs | Browse with search + skill filters, post a job, detail split by role |
+| Proposals | Submit, withdraw, shortlist; owner sees score + preview only |
+| Messaging | Inbox and live threads, watermark-aware attachments (read-only) |
+| KYC | Document + selfie capture with on-device screening, deposit status |
+
+**Not built yet:** the escrow *release* action, profile setup/editing, and
+sending attachments from the web.
+
+22 tests run in Node with no test framework dependency
+(`node --experimental-strip-types`). They copy their assertions from the Dart
+suites on purpose — the two stacks compute fees and screen photos
+independently, so identical pinned numbers are the only thing stopping them
+drifting apart.
