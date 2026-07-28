@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import type { Job, Proposal } from '@/lib/schema';
 import { describeError, shortlistProposal } from '@/lib/mutations';
+import { hire, InsufficientPostingBalance } from '@/lib/escrow';
+import { useSession } from '@/lib/session';
 import { Card, ErrorState, Pill, money } from './ui';
 
 /**
@@ -14,8 +16,26 @@ import { Card, ErrorState, Pill, money } from './ui';
  * so this page could not show it even if it tried.
  */
 export function ProposalList({ job, proposals }: { job: Job; proposals: Proposal[] }) {
+  const { user } = useSession();
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function hireThem(p: Proposal) {
+    if (!user) return;
+    if (!confirm(
+      `Hire ${p.freelancerName} for ${money(p.bidAmountCents ?? 0)}? `
+      + 'This moves that amount from your posting balance into escrow.')) return;
+    setBusyId(p.id); setError(null);
+    try {
+      await hire(job, p, user.displayName);
+    } catch (e) {
+      // The balance message is written for the person reading it, so it is
+      // passed through rather than flattened into a generic failure.
+      setError(e instanceof InsufficientPostingBalance ? e.message : describeError(e));
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   async function toggle(p: Proposal) {
     setBusyId(p.id); setError(null);
@@ -63,14 +83,23 @@ export function ProposalList({ job, proposals }: { job: Job; proposals: Proposal
               )}
               {(job.status ?? 'open') === 'open' && !job.hiredProposalId
                 && p.status !== 'withdrawn' && p.status !== 'declined' && (
-                <button
-                  onClick={() => void toggle(p)}
-                  disabled={busyId === p.id}
-                  className="mt-2 rounded-[9px] bg-blue-tint px-2.5 py-1 text-[11px] font-semibold text-blue disabled:opacity-50"
-                >
-                  {busyId === p.id ? '…'
-                    : p.status === 'shortlisted' ? 'Shortlisted ✓' : 'Shortlist'}
-                </button>
+                <div className="mt-2 flex flex-col items-end gap-1.5">
+                  <button
+                    onClick={() => void toggle(p)}
+                    disabled={busyId === p.id}
+                    className="rounded-[9px] bg-blue-tint px-2.5 py-1 text-[11px] font-semibold text-blue disabled:opacity-50"
+                  >
+                    {busyId === p.id ? '…'
+                      : p.status === 'shortlisted' ? 'Shortlisted ✓' : 'Shortlist'}
+                  </button>
+                  <button
+                    onClick={() => void hireThem(p)}
+                    disabled={busyId === p.id}
+                    className="rounded-[9px] bg-ink-strong px-2.5 py-1 text-[11px] font-semibold text-canvas disabled:opacity-50"
+                  >
+                    Hire
+                  </button>
+                </div>
               )}
             </div>
           </div>

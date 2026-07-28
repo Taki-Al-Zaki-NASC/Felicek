@@ -1,19 +1,19 @@
 'use client';
 
+import { useState } from 'react';
 import type { Job, Proposal } from '@/lib/schema';
 import { milestoneCents } from '@/lib/schema';
 import { breakdown, LOCAL } from '@/lib/fees';
-import { Card, Pill, SectionLabel, money } from './ui';
+import { Button, Card, ErrorState, Pill, SectionLabel, money } from './ui';
+import { InsufficientPostingBalance, releaseMilestone } from '@/lib/escrow';
+import { describeError } from '@/lib/mutations';
 
 /**
- * Escrow state for the job owner.
+ * Escrow state and release for the job owner.
  *
- * Read-only for now: releasing a milestone moves real money through a
- * transaction that also credits the ledger, closes the job and unlocks the
- * freelancer's trust bond. That belongs in one implementation, and it already
- * exists in EngagementRepository — porting it is the Escrow step, not this one.
- * Showing the numbers without the button is honest; a button that half-works
- * would not be.
+ * Release runs the ported transaction in lib/escrow.ts: credit net of fees,
+ * both ledger lines, escrow decremented, and on the last milestone the job
+ * closes and the freelancer's trust bond unlocks.
  */
 export function EscrowPanel({ job, proposals }: { job: Job; proposals: Proposal[] }) {
   const hired = proposals.find((p) => p.id === job.hiredProposalId);
@@ -31,7 +31,8 @@ export function EscrowPanel({ job, proposals }: { job: Job; proposals: Proposal[
     );
   }
 
-  const next = milestones.find((m) => !m.released);
+  const nextIndex = milestones.findIndex((m) => !m.released);
+  const next = nextIndex >= 0 ? milestones[nextIndex] : undefined;
   const fees = next ? breakdown(milestoneCents(next, job, hired), LOCAL) : null;
   const releasedCount = milestones.filter((m) => m.released).length;
 
@@ -59,15 +60,12 @@ export function EscrowPanel({ job, proposals }: { job: Job; proposals: Proposal[
         </div>
       )}
 
-      {!next && (
+      {next ? (
+        <ReleaseButton job={job} proposal={hired} index={nextIndex}
+          isFinal={milestones.filter((m) => !m.released).length === 1} />
+      ) : (
         <div className="mt-3"><Pill tone="teal">All milestones released</Pill></div>
       )}
-
-      <p className="mt-3 text-xs text-ink-faint">
-        Releasing runs in the Android app for now — it moves money, credits both
-        ledgers and closes the engagement in one transaction, and that is being
-        ported rather than reimplemented.
-      </p>
     </Card>
   );
 }
@@ -79,5 +77,39 @@ function Row({ label, value, muted, strong }: {
     <div className={`flex justify-between ${muted ? 'text-ink-muted' : ''} ${strong ? 'font-bold' : ''}`}>
       <span>{label}</span><span>{value}</span>
     </div>
+  );
+}
+
+function ReleaseButton({ job, proposal, index, isFinal }: {
+  job: Job; proposal: Proposal; index: number; isFinal: boolean;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function release() {
+    // Money leaving escrow is not undoable, so it gets a confirmation.
+    const label = job.milestones?.[index]?.label ?? 'this milestone';
+    if (!confirm(isFinal
+      ? `Release "${label}" and complete this engagement? This cannot be undone.`
+      : `Release "${label}" to ${proposal.freelancerName}? This cannot be undone.`)) {
+      return;
+    }
+    setBusy(true); setError(null);
+    try {
+      await releaseMilestone(job, proposal, index);
+    } catch (e) {
+      setError(e instanceof InsufficientPostingBalance ? e.message : describeError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      {error && <div className="mt-3"><ErrorState message={error} /></div>}
+      <Button className="mt-4 w-full" busy={busy} onClick={release}>
+        {isFinal ? 'Release final milestone' : 'Release milestone'}
+      </Button>
+    </>
   );
 }

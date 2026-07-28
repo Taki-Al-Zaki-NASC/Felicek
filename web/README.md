@@ -40,11 +40,13 @@ Built and building clean (`npm run typecheck && npm run build && npm test`):
 | Proposals | Submit, withdraw, shortlist; owner sees score + preview only |
 | Messaging | Inbox and live threads, watermark-aware attachments (read-only) |
 | KYC | Document + selfie capture with on-device screening, deposit status |
+| Escrow | Hire (funds escrow), release milestones, ledger lines, trust-bond unlock |
 
-**Not built yet:** the escrow *release* action, profile setup/editing, and
-sending attachments from the web.
+**Not built yet:** profile setup/editing, sending attachments from the web,
+and web deposit checkout (which needs the payment webhook — the client cannot
+mark its own payment cleared, by design).
 
-22 tests run in Node with no test framework dependency
+27 tests run in Node with no test framework dependency
 (`node --experimental-strip-types`). They copy their assertions from the Dart
 suites on purpose — the two stacks compute fees and screen photos
 independently, so identical pinned numbers are the only thing stopping them
