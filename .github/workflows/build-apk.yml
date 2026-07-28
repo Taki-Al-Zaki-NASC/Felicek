@@ -34,7 +34,13 @@ permissions:
   contents: write
 
 concurrency:
-  group: build-apk-${{ github.ref }}
+  # Keyed by commit, not just by branch. Grouping on the branch alone means any
+  # run on this ref cancels any other — including a re-run of an OLD commit
+  # killing a live build of a newer one, which is exactly what happened when a
+  # retry of a known-broken commit cancelled a healthy build eight minutes in.
+  # Per-commit grouping still collapses duplicate runs of the same SHA (a push
+  # plus a manual dispatch) while letting different commits build independently.
+  group: build-apk-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
