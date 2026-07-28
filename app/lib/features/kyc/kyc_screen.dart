@@ -20,6 +20,7 @@ import '../../data/repositories/user_repository.dart';
 import '../../data/repositories/wallet_repository.dart';
 import '../../data/services/firestore_refs.dart';
 import '../../data/services/payment_gateway_service.dart';
+import 'identity_capture_sheet.dart';
 
 /// Identity verification and the mandatory deposit that unlocks the account.
 ///
@@ -55,16 +56,23 @@ class _KycScreenState extends State<KycScreen> {
       }
       return;
     }
-    final String? reference = await _askForReference(type);
-    if (reference == null || !mounted) return;
+    final IdentityCapture? capture =
+        await IdentityCaptureSheet.show(context, type);
+    if (capture == null || !mounted) return;
     try {
       await context.userRepo.submitIdentityDocument(
         uid: user.uid,
         type: type,
-        reference: reference,
+        reference: capture.reference,
+        documentImageBase64: capture.documentBase64,
+        selfieImageBase64: capture.selfieBase64,
+        autoCheck: capture.autoCheck,
+        // The sheet only returns once every check has passed, so reaching
+        // here means screening succeeded.
+        autoPassed: true,
       );
       if (mounted) {
-        AppFeedback.success(context, '${type.label} submitted for review.');
+        AppFeedback.success(context, '${type.label} verified.');
       }
     } on Object catch (e) {
       if (mounted) AppFeedback.error(context, describeFirestoreError(e));

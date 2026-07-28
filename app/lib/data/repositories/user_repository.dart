@@ -135,38 +135,93 @@ class UserRepository {
   /// licence or another government ID) was submitted. Only a reference number
   /// is stored — the document image never leaves the device, which is both a
   /// privacy win and what keeps the project off a paid storage plan.
+  /// Records an identity submission: the number, the captured images, and the
+  /// automated screening verdict.
+  ///
+  /// The images are written to the owner-only `identity` subcollection, one
+  /// document each, and never onto the profile — see Db.identityImages.
+  ///
+  /// [autoPassed] reflects the on-device screening in IdentityCheck. It moves
+  /// the account to `verified` because on the free tier there is no server to
+  /// review a queue, and an account that has paid a real deposit and passed
+  /// screening should not sit blocked behind a review that nobody performs.
+  /// That is a deliberate trade, documented in docs/VERIFICATION.md, and it is
+  /// the piece that a real provider replaces first.
   Future<void> submitIdentityDocument({
     required String uid,
     required IdDocumentType type,
     required String reference,
+    String? documentImageBase64,
+    String? selfieImageBase64,
+    Map<String, dynamic>? autoCheck,
+    bool autoPassed = false,
   }) async {
-    await _db.user(uid).set(
+    final WriteBatch batch = _db.firestore.batch();
+
+    if (documentImageBase64 != null) {
+      batch.set(_db.identityImages(uid).doc('document'), <String, dynamic>{
+        'kind': 'document',
+        'documentType': type.key,
+        'imageBase64': documentImageBase64,
+        'capturedAt': FieldValue.serverTimestamp(),
+      });
+    }
+    if (selfieImageBase64 != null) {
+      batch.set(_db.identityImages(uid).doc('selfie'), <String, dynamic>{
+        'kind': 'selfie',
+        'imageBase64': selfieImageBase64,
+        'capturedAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    batch.set(
+      _db.user(uid),
       <String, dynamic>{
         'kyc': <String, dynamic>{
           'idSubmitted': true,
           'idDocumentType': type.key,
           'idReference': reference,
-          'stage': KycStage.idSubmitted.name,
+          'hasDocumentImage': documentImageBase64 != null,
+          'hasSelfieImage': selfieImageBase64 != null,
+          'stage':
+              (autoPassed ? KycStage.verified : KycStage.idSubmitted).name,
+          if (autoCheck != null) 'autoCheck': autoCheck,
           'submittedAt': FieldValue.serverTimestamp(),
         },
         'updatedAt': FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),
     );
+
+    await batch.commit();
   }
 
-  Future<void> clearIdentityDocument(String uid) => _db.user(uid).set(
-        <String, dynamic>{
-          'kyc': <String, dynamic>{
-            'idSubmitted': false,
-            'idDocumentType': null,
-            'idReference': null,
-            'stage': KycStage.none.name,
-          },
-          'updatedAt': FieldValue.serverTimestamp(),
+  /// Withdraws an identity submission and deletes the captured images with it.
+  ///
+  /// Leaving the photos behind would mean "remove my documents" quietly kept
+  /// a passport scan on the server — the opposite of what the action says.
+  Future<void> clearIdentityDocument(String uid) async {
+    final WriteBatch batch = _db.firestore.batch();
+    batch.delete(_db.identityImages(uid).doc('document'));
+    batch.delete(_db.identityImages(uid).doc('selfie'));
+    batch.set(
+      _db.user(uid),
+      <String, dynamic>{
+        'kyc': <String, dynamic>{
+          'idSubmitted': false,
+          'idDocumentType': null,
+          'idReference': null,
+          'hasDocumentImage': false,
+          'hasSelfieImage': false,
+          'autoCheck': null,
+          'stage': KycStage.none.name,
         },
-        SetOptions(merge: true),
-      );
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+    await batch.commit();
+  }
 
   Future<void> submitBirthCertificate({
     required String uid,

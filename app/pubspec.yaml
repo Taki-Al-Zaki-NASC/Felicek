@@ -7,7 +7,7 @@ publish_to: "none"
 # version: <semver>+<androidVersionCode>
 # The build number (after `+`) is the Android versionCode and MUST increase on
 # every release — the in-app updater compares it against update.json.
-version: 1.0.0+1
+version: 1.0.0+11
 
 environment:
   sdk: ">=3.5.0 <4.0.0"

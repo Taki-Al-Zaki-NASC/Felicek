@@ -133,6 +133,18 @@ service cloud.firestore {
           );
       }
 
+      // Captured identity images: passport scans and selfies.
+      //
+      // Owner-only in both directions, with no exception for anyone. A client
+      // who hires this person, an agency they belong to, and an admin reading
+      // through the console are all outside this. The account itself is the
+      // only reader — which is why verification screening runs on the device
+      // and stores a verdict, rather than shipping the image somewhere to be
+      // looked at.
+      match /identity/{imageId} {
+        allow read, write, delete: if isSelf(uid);
+      }
+
       match /notifications/{notificationId} {
         allow read, update, delete: if isSelf(uid);
         // Any signed-in user may drop a notification into someone else's

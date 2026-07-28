@@ -60,6 +60,16 @@ class Db {
   CollectionReference<Json> notifications(String uid) =>
       user(uid).collection(notificationsPath);
 
+  /// Captured identity images, one document per image.
+  ///
+  /// Deliberately NOT on the profile document: these run to a few hundred KB
+  /// each, and the profile is streamed live, so storing them there would
+  /// re-download every image on every unrelated profile change. Rules scope
+  /// this subcollection to its owner — nobody else can read someone's
+  /// passport photo, including a job owner they are working with.
+  CollectionReference<Json> identityImages(String uid) =>
+      user(uid).collection('identity');
+
   /// Agency team seats — invites and joined members.
   CollectionReference<Json> seats(String agencyUid) =>
       user(agencyUid).collection(seatsPath);

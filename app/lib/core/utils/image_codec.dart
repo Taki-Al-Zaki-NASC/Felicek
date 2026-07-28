@@ -49,6 +49,40 @@ class ImageCodec {
     return base64Encode(jpeg);
   }
 
+  /// Longest edge for a stored identity document.
+  ///
+  /// Larger than [maxDimension] because a document has to stay *readable* —
+  /// a 480px square crop of a passport is useless to a reviewer. Also never
+  /// square-cropped, for the same reason.
+  static const int documentMaxDimension = 1280;
+  static const int documentJpegQuality = 82;
+
+  /// Downsizes a document photo while preserving its aspect ratio.
+  ///
+  /// Lands around 120–260 KB, which is why these are written to their own
+  /// subcollection document rather than onto the profile: the profile doc is
+  /// streamed live by SessionController, so anything stored on it is
+  /// re-downloaded on every unrelated profile change.
+  static String? downsizeDocumentToBase64(Uint8List bytes) {
+    img.Image? decoded = img.decodeImage(bytes);
+    if (decoded == null) return null;
+    decoded = img.bakeOrientation(decoded);
+
+    final int longEdge =
+        decoded.width > decoded.height ? decoded.width : decoded.height;
+    if (longEdge > documentMaxDimension) {
+      decoded = decoded.width >= decoded.height
+          ? img.copyResize(decoded,
+              width: documentMaxDimension,
+              interpolation: img.Interpolation.average)
+          : img.copyResize(decoded,
+              height: documentMaxDimension,
+              interpolation: img.Interpolation.average);
+    }
+
+    return base64Encode(img.encodeJpg(decoded, quality: documentJpegQuality));
+  }
+
   static Uint8List? decode(String? base64String) {
     if (base64String == null || base64String.isEmpty) return null;
     try {
