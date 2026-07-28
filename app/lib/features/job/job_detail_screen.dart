@@ -9,6 +9,7 @@ import '../../core/utils/feedback.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/validators.dart';
 import '../../core/widgets/f_button.dart';
+import '../../core/widgets/f_fee_breakdown.dart';
 import '../../core/widgets/f_field.dart';
 import '../../core/widgets/f_pill.dart';
 import '../../core/widgets/f_surface.dart';
@@ -935,6 +936,15 @@ class _EscrowPanel extends StatefulWidget {
 class _EscrowPanelState extends State<_EscrowPanel> {
   int? _releasing;
 
+  /// The next milestone a Release tap would pay out, or null when they are
+  /// all released.
+  static Milestone? _nextUnreleased(Job job) {
+    for (final Milestone m in job.milestones) {
+      if (!m.released) return m;
+    }
+    return null;
+  }
+
   Future<void> _release(Proposal hired, int index) async {
     final Milestone m = widget.job.milestones[index];
     final bool isFinal = widget.job.milestones.asMap().entries.every(
@@ -1082,9 +1092,27 @@ class _EscrowPanelState extends State<_EscrowPanel> {
                     ),
                   ),
                 ),
+              // The client is about to release real money; showing the split
+              // here means neither side discovers the deduction afterwards.
+              // The amount comes from EngagementRepository so the figure shown
+              // is the figure charged.
+              if (_nextUnreleased(job) != null) ...<Widget>[
+                FFeeBreakdown(
+                  breakdown: Fees.breakdown(
+                    EngagementRepository.milestoneCents(
+                      _nextUnreleased(job)!,
+                      job,
+                      hired,
+                    ),
+                    PayoutMethod.bkash,
+                  ),
+                  compact: true,
+                ),
+                const SizedBox(height: FSpace.md),
+              ],
               Text(
-                'Released funds reach the freelancer immediately, net of the flat '
-                '${Fees.label(PayoutMethod.bkash)} maintenance fee.',
+                'Released funds reach the freelancer immediately, net of the '
+                'fees above.',
                 style: FType.captionSm.copyWith(fontSize: 10),
               ),
             ],

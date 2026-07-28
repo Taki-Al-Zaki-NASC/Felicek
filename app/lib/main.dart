@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -77,6 +78,20 @@ Future<Widget> _buildApp() async {
     final FirebaseAuth auth = FirebaseAuth.instance;
     final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
+    // Crash reporting. Only reachable once Firebase is up, which is also the
+    // only point at which it could work — and it is off in debug so local
+    // stack traces stay in the console rather than being uploaded.
+    _crashlytics = FirebaseCrashlytics.instance;
+    await _crashlytics!.setCrashlyticsCollectionEnabled(!kDebugMode);
+    FlutterError.onError = (FlutterErrorDetails details) {
+      FlutterError.presentError(details);
+      _report(details.exception, details.stack);
+    };
+    PlatformDispatcher.instance.onError = (Object e, StackTrace s) {
+      _report(e, s);
+      return true;
+    };
+
     // Offline persistence is what makes the messaging UI feel instant: a sent
     // message renders from the local cache before the network round-trip.
     firestore.settings = const Settings(
@@ -108,12 +123,21 @@ Future<Widget> _buildApp() async {
   }
 }
 
+/// Null until Firebase is up. Everything before that point has nowhere to
+/// report to, which is exactly why the startup path prints instead.
+FirebaseCrashlytics? _crashlytics;
+
 void _report(Object error, StackTrace? stack) {
-  // Crash reporting would go here. Crashlytics needs no billing upgrade, but
-  // it is deliberately not wired in yet: shipping an analytics SDK before the
-  // privacy policy exists is how apps fail Play review.
   if (kDebugMode) {
     debugPrint('Unhandled error: $error');
     if (stack != null) debugPrint(stack.toString());
+    return;
+  }
+  // Reporting must never itself throw: an exception here would be raised from
+  // inside the handler for another exception, and take the app down with it.
+  try {
+    _crashlytics?.recordError(error, stack, fatal: false);
+  } on Object {
+    // Nothing useful left to do — the reporter is the thing that failed.
   }
 }

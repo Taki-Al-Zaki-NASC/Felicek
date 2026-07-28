@@ -99,4 +99,7 @@ flutter {
 // docs/SETUP.md.
 if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
+    // Crashlytics needs google-services too, so it is gated on the same file:
+    // applying it without a project would fail a fresh clone's build.
+    apply(plugin = "com.google.firebase.crashlytics")
 }

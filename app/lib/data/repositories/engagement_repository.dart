@@ -136,7 +136,7 @@ class EngagementRepository {
     final Milestone milestone = job.milestones[milestoneIndex];
     if (milestone.released) return;
 
-    final int amountCents = _milestoneCents(milestone, job, proposal);
+    final int amountCents = milestoneCents(milestone, job, proposal);
     final int feeCents = Fees.feeCentsFor(amountCents, method);
     final int netCents = amountCents - feeCents;
 
@@ -270,7 +270,11 @@ class EngagementRepository {
   /// Milestone amounts are free text in the design (`$100`, `TBD`). Parse
   /// what we can; otherwise split the accepted bid evenly so a release never
   /// silently pays zero.
-  int _milestoneCents(Milestone milestone, Job job, Proposal proposal) {
+  /// Public so the UI can show a fee breakdown for the *same* number this
+  /// class will actually charge. A screen recomputing it independently would
+  /// eventually disagree with the ledger, and the person would be told one
+  /// figure and paid another.
+  static int milestoneCents(Milestone milestone, Job job, Proposal proposal) {
     final RegExpMatch? m =
         RegExp(r'\$\s*([\d,]+(?:\.\d+)?)').firstMatch(milestone.amount);
     if (m != null) {

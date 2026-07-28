@@ -376,7 +376,9 @@ class _PayoutMethods extends StatelessWidget {
         ),
         const SizedBox(height: FSpace.md),
         Text(
-          'Maintenance fee on this rail: ${Fees.label(selected)}',
+          'Processing on this rail: '
+          '${GatewaySchedule.forMethod(selected).rateLabel}, plus the 1% '
+          'Felicek fee.',
           style: FType.captionSm.copyWith(fontSize: 10.5),
         ),
       ],

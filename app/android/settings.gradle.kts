@@ -24,6 +24,9 @@ plugins {
     // Applied in app/build.gradle.kts only when google-services.json exists,
     // so a clone without Firebase config still builds. See docs/SETUP.md.
     id("com.google.gms.google-services") version "4.4.2" apply false
+    // Uploads the obfuscation mapping so R8-minified release stack traces are
+    // readable in the console instead of a wall of a/b/c symbols.
+    id("com.google.firebase.crashlytics") version "3.0.2" apply false
 }
 
 include(":app")
