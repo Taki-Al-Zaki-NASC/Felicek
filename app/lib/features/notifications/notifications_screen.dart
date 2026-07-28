@@ -5,9 +5,11 @@ import '../../app/services.dart';
 import '../../app/session_controller.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/theme/typography.dart';
+import '../../core/utils/feedback.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/f_surface.dart';
 import '../../data/models/app_notification.dart';
+import '../../data/services/firestore_refs.dart';
 import '../chat/chat_screen.dart';
 import '../job/job_detail_screen.dart';
 
@@ -34,7 +36,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     // nothing extra — the person is already looking at the feed.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final String? uid = context.read<SessionController>().uid;
-      if (uid != null) context.notificationRepo.pruneOlderThan(uid);
+      // Housekeeping is best-effort: a failure here is not worth interrupting
+      // someone reading their feed, but it must still be swallowed
+      // deliberately rather than surfacing as an unhandled async error.
+      if (uid != null) {
+        context.notificationRepo.pruneOlderThan(uid).ignore();
+      }
     });
   }
 
@@ -51,7 +58,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             title: 'Notifications',
             actions: <Widget>[
               TextButton(
-                onPressed: () => context.notificationRepo.markAllRead(uid),
+                onPressed: () => AppFeedback.guard(
+                  context,
+                  () => context.notificationRepo.markAllRead(uid),
+                ),
                 child: Text(
                   'Mark all read',
                   style: FType.pill
@@ -68,8 +78,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 AsyncSnapshot<List<AppNotification>> snap,
               ) {
                 if (snap.hasError) {
-                  return const FErrorState(
-                    message: 'Notifications could not load.',
+                  return FErrorState(
+                    message: describeFirestoreError(snap.error!),
                   );
                 }
                 if (!snap.hasData) return const FLoading();
@@ -151,7 +161,13 @@ class _NotificationRow extends StatelessWidget {
 
   Future<void> _open(BuildContext context) async {
     if (!item.read) {
-      await context.notificationRepo.markRead(uid, item.id);
+      // Opening the item is the point; the read receipt is incidental, so a
+      // failure here must not stop the navigation below from happening.
+      try {
+        await context.notificationRepo.markRead(uid, item.id);
+      } on Object {
+        // Intentionally ignored — retried next time the feed is opened.
+      }
     }
     if (!context.mounted) return;
 
@@ -187,7 +203,13 @@ class _NotificationRow extends StatelessWidget {
         child: const Icon(Icons.delete_outline_rounded,
             size: 18, color: FColors.danger),
       ),
-      onDismissed: (_) => context.notificationRepo.delete(uid, item.id),
+      onDismissed: (_) => AppFeedback.guard(
+        context,
+        () => context.notificationRepo.delete(uid, item.id),
+        // The row is already gone from the list; if the delete did not land,
+        // it will reappear, and that needs explaining.
+        onError: 'That notification could not be deleted.',
+      ),
       child: FCard(
         radius: FRadius.card,
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
@@ -269,6 +291,9 @@ class NotificationBell extends StatelessWidget {
     return StreamBuilder<int>(
       stream: context.notificationRepo.watchUnreadCount(uid),
       builder: (BuildContext context, AsyncSnapshot<int> snap) {
+        // Deliberately degrades to 0 rather than showing an error: this is a
+        // badge on an icon with nowhere to put a message, and opening the
+        // screen behind it reports the real failure properly.
         final int count = snap.data ?? 0;
         return InkResponse(
           onTap: () => Navigator.of(context).push(

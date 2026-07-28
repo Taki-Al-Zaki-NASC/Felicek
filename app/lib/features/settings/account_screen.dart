@@ -202,13 +202,23 @@ class _BlockedList extends StatelessWidget {
                           .then((p) => p?.displayName ?? 'Felicek user'),
                       builder:
                           (BuildContext context, AsyncSnapshot<String> s) =>
-                              Text(s.data ?? '…', style: FType.bodyXs),
+                              Text(
+                        // A failed lookup used to leave an ellipsis on screen
+                        // forever, as if the name were still loading.
+                        s.hasError
+                            ? 'Felicek user'
+                            : (s.data ?? '…'),
+                        style: FType.bodyXs,
+                      ),
                     ),
                   ),
                   FTextAction(
                     label: 'Unblock',
-                    onPressed: () =>
-                        context.userRepo.unblockUser(user.uid, blocked),
+                    onPressed: () => AppFeedback.guard(
+                      context,
+                      () => context.userRepo.unblockUser(user.uid, blocked),
+                      onSuccess: 'Unblocked.',
+                    ),
                   ),
                 ],
               ),

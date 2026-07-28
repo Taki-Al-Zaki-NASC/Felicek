@@ -6,6 +6,7 @@ import '../../data/models/chat.dart';
 import '../../data/models/message.dart';
 import '../../data/repositories/chat_repository.dart';
 import '../../data/repositories/user_repository.dart';
+import '../../data/services/firestore_refs.dart';
 
 /// All the state one open conversation needs.
 ///
@@ -139,7 +140,7 @@ class ChatController extends ChangeNotifier {
   void _onStreamError(Object e) {
     _loading = false;
     _loadingOlder = false;
-    _error = 'Messages could not load. Check your connection.';
+    _error = describeFirestoreError(e);
     notifyListeners();
   }
 

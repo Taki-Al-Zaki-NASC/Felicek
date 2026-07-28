@@ -17,6 +17,7 @@ import '../../data/models/job.dart';
 import '../../data/models/team_seat.dart';
 import '../../data/models/user_role.dart';
 import '../../data/repositories/user_repository.dart';
+import '../../data/services/firestore_refs.dart';
 import '../job/job_card.dart';
 import '../job/job_detail_screen.dart';
 import '../job/post_job_screen.dart';
@@ -254,7 +255,7 @@ class _BrowseFeed extends StatelessWidget {
       stream: context.jobRepo.watchOpenJobs(type: filter),
       builder: (BuildContext context, AsyncSnapshot<List<Job>> snap) {
         if (snap.hasError) {
-          return const FErrorState(message: 'Listings could not load.');
+          return FErrorState(message: describeFirestoreError(snap.error!));
         }
         if (!snap.hasData) return const FLoading();
         final List<Job> jobs = snap.data!;
@@ -293,6 +294,11 @@ class _Dashboard extends StatelessWidget {
     return StreamBuilder<List<Job>>(
       stream: context.jobRepo.watchMyJobs(user.uid),
       builder: (BuildContext context, AsyncSnapshot<List<Job>> snap) {
+        // A failed read must not render as "$0 funded, 0 proposals" — that is
+        // a confident, wrong answer about the client's own money.
+        if (snap.hasError) {
+          return FErrorState(message: describeFirestoreError(snap.error!));
+        }
         final List<Job> jobs = snap.data ?? const <Job>[];
         final int escrowFunded = jobs.fold<int>(
           0,
@@ -502,6 +508,9 @@ class _TeamSeats extends StatelessWidget {
     return StreamBuilder<List<TeamSeat>>(
       stream: context.userRepo.watchTeamSeats(agency.uid),
       builder: (BuildContext context, AsyncSnapshot<List<TeamSeat>> snap) {
+        if (snap.hasError) {
+          return FErrorState(message: describeFirestoreError(snap.error!));
+        }
         final List<TeamSeat> seats = snap.data ?? const <TeamSeat>[];
         return Column(
           children: <Widget>[
@@ -539,8 +548,11 @@ class _TeamSeats extends StatelessWidget {
                         ? FPill.teal('Active', fontSize: 10)
                         : FPill.amber('Invited', fontSize: 10),
                     IconButton(
-                      onPressed: () => context.userRepo.removeTeamSeat(
-                          agencyUid: agency.uid, seatId: seat.id),
+                      onPressed: () => AppFeedback.guard(
+                        context,
+                        () => context.userRepo.removeTeamSeat(
+                            agencyUid: agency.uid, seatId: seat.id),
+                      ),
                       icon: const Icon(Icons.close_rounded, size: 15),
                       color: FColors.inkFaint,
                       visualDensity: VisualDensity.compact,

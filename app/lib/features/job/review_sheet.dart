@@ -43,10 +43,18 @@ class ReviewSheet extends StatefulWidget {
   }) async {
     final String? uid = context.read<SessionController>().uid;
     if (uid == null) return false;
-    final Review? existing = await context.engagementRepo.myReviewFor(
-      jobId: job.id,
-      authorId: uid,
-    );
+    // A failed lookup previously meant the sheet never opened at all, with
+    // no explanation. Treat it as "no existing review" so the person can
+    // still leave one — the write itself is guarded below.
+    Review? existing;
+    try {
+      existing = await context.engagementRepo.myReviewFor(
+        jobId: job.id,
+        authorId: uid,
+      );
+    } on Object {
+      existing = null;
+    }
     if (!context.mounted) return false;
 
     final bool? saved = await showModalBottomSheet<bool>(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../data/services/firestore_refs.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 
@@ -119,6 +120,39 @@ class AppFeedback {
       ),
     );
     return result ?? false;
+  }
+
+  /// Runs [action], reporting a failure instead of letting it disappear.
+  ///
+  /// Returns true when it completed. Use this for every repository call made
+  /// in response to a tap.
+  ///
+  /// An audit found roughly a dozen `await someRepo.doThing()` calls with no
+  /// try at all. On a denied write the exception unwound to nothing, so the
+  /// user tapped "Close Listing" or "Shortlist", got no toast, no error and no
+  /// state change, and had no way to tell the difference between "that
+  /// silently failed" and "that isn't wired up". Reaching for this helper is
+  /// less effort than hand-writing a try/catch, which is the point — the safe
+  /// path has to be the easy one or it doesn't get taken.
+  ///
+  /// [onError] overrides the derived message when the screen has more context
+  /// about what was being attempted.
+  static Future<bool> guard(
+    BuildContext context,
+    Future<void> Function() action, {
+    String? onError,
+    String? onSuccess,
+  }) async {
+    try {
+      await action();
+      if (context.mounted && onSuccess != null) success(context, onSuccess);
+      return true;
+    } on Object catch (e) {
+      if (context.mounted) {
+        error(context, onError ?? describeFirestoreError(e));
+      }
+      return false;
+    }
   }
 }
 

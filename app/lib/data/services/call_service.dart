@@ -497,8 +497,18 @@ class CallService extends ChangeNotifier {
   }
 
   static String _describeError(Object e) {
-    if (e.toString().contains('Permission')) {
-      return 'Camera or microphone permission was denied.';
+    // Firestore failures reach here too — signalling is Firestore documents —
+    // so classify by type rather than by searching the stringified exception.
+    //
+    // The previous version matched `toString().contains('Permission')`, which
+    // both missed a genuine camera denial phrased differently and mislabelled
+    // a Firestore `permission-denied` (lowercase, so it fell through) as a
+    // connection problem. Substring-matching an exception is how the wrong
+    // diagnosis gets shown confidently.
+    if (e is FirebaseException) return describeFirestoreError(e);
+    if (e.toString().toLowerCase().contains('permission')) {
+      return 'Camera or microphone permission was denied. Grant access in '
+          'system settings and try again.';
     }
     return 'The call could not be started. Check your connection and try again.';
   }

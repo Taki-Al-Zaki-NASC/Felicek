@@ -90,6 +90,9 @@ class _AppShellState extends State<AppShell> {
           : StreamBuilder<int>(
               stream: context.chatRepo.watchTotalUnread(uid),
               builder: (BuildContext context, AsyncSnapshot<int> snap) {
+                // Same deliberate degradation as the notifications badge: a
+                // count on a FAB has no room to explain itself, and the inbox
+                // it opens surfaces the error.
                 final int unread = snap.data ?? 0;
                 return Stack(
                   clipBehavior: Clip.none,

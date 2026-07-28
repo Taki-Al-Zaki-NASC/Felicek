@@ -419,7 +419,12 @@ class UpdateService extends ChangeNotifier {
       _emit(
         _state.copyWith(
           phase: UpdatePhase.readyToInstall,
-          error: e.message ?? 'Android could not start the installer.',
+          // Not e.message: PlatformException messages are developer-facing
+          // and land on a screen where the only useful next step is retrying
+          // or installing by hand.
+          error: 'Android could not start the installer (${e.code}). '
+              'The download is saved — try again, or install the APK from '
+              'your Downloads folder.',
         ),
       );
     }

@@ -14,6 +14,7 @@ import '../../core/widgets/f_surface.dart';
 import '../../data/models/chat.dart';
 import '../../data/models/message.dart';
 import '../../data/repositories/chat_repository.dart';
+import '../../data/services/firestore_refs.dart';
 import 'chat_screen.dart';
 
 /// The conversation list.
@@ -79,9 +80,8 @@ class _InboxScreenState extends State<InboxScreen> {
                 AsyncSnapshot<List<ChatThread>> snapshot,
               ) {
                 if (snapshot.hasError) {
-                  return const FErrorState(
-                    message:
-                        'Conversations could not load. Check your connection.',
+                  return FErrorState(
+                    message: describeFirestoreError(snapshot.error!),
                   );
                 }
                 if (!snapshot.hasData) return const FLoading();

@@ -8,6 +8,7 @@ import '../../core/utils/feedback.dart';
 import '../../core/widgets/f_button.dart';
 import '../../core/widgets/f_logo.dart';
 import '../../data/models/user_role.dart';
+import '../../data/services/firestore_refs.dart';
 import 'role_card.dart';
 
 /// "Choose your account" — the first screen in the design, rebuilt exactly:
@@ -34,11 +35,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     setState(() => _busy = true);
     try {
       await context.read<SessionController>().chooseRole(_selected);
-    } on Object {
-      if (mounted) {
-        AppFeedback.error(
-            context, 'Could not save that. Check your connection.');
-      }
+    } on Object catch (e) {
+      if (mounted) AppFeedback.error(context, describeFirestoreError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

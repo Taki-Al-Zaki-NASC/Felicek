@@ -896,19 +896,29 @@ Future<void> openChatWith(
   final UserRepository users = context.userRepo;
   final ChatRepository chats = context.chatRepo;
 
-  final PublicProfile? other = await users.fetchProfile(otherUid);
-  if (other == null) {
-    if (context.mounted) {
-      AppFeedback.error(context, 'That account is no longer available.');
+  final PublicProfile other;
+  final String chatId;
+  try {
+    final PublicProfile? fetched = await users.fetchProfile(otherUid);
+    if (fetched == null) {
+      if (context.mounted) {
+        AppFeedback.error(context, 'That account is no longer available.');
+      }
+      return;
     }
+    other = fetched;
+    chatId = await chats.openThread(
+      me: me,
+      other: other,
+      jobId: jobId,
+      jobTitle: jobTitle,
+    );
+  } on Object catch (e) {
+    // Both awaits were unguarded, so tapping "Message" on a profile did
+    // nothing at all when either failed.
+    if (context.mounted) AppFeedback.error(context, describeFirestoreError(e));
     return;
   }
-  final String chatId = await chats.openThread(
-    me: me,
-    other: other,
-    jobId: jobId,
-    jobTitle: jobTitle,
-  );
   if (!context.mounted) return;
   await Navigator.of(context).push(
     MaterialPageRoute<void>(

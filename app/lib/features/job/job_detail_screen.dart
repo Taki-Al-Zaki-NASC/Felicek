@@ -129,38 +129,46 @@ class _FreelancerViewState extends State<_FreelancerView> {
       final DateTime scheduled =
           DateTime(when.year, when.month, when.day, time.hour, time.minute);
       final String proposalId = '${widget.job.id}__${user.uid}';
-      await context.proposalRepo
-          .scheduleInterview(proposalId: proposalId, scheduledAt: scheduled);
-      if (mounted) {
-        AppFeedback.success(
-          context,
-          'Interview requested for ${Fmt.dayHeader(scheduled)} · ${Fmt.clock(scheduled)}.',
-        );
-      }
+      await AppFeedback.guard(
+        context,
+        () => context.proposalRepo
+            .scheduleInterview(proposalId: proposalId, scheduledAt: scheduled),
+        onSuccess:
+            'Interview requested for ${Fmt.dayHeader(scheduled)} · ${Fmt.clock(scheduled)}.',
+      );
       return;
     }
 
     final String proposalId = '${widget.job.id}__${user.uid}';
+    // A challenge answer is work the person just spent real time on, so a
+    // failed submission must never look like a successful one.
+    final bool ok;
     if (challenge.mode == ChallengeMode.quiz) {
       final List<int>? answers =
           await ChallengeSheet.showQuiz(context, challenge);
       if (answers == null || !mounted) return;
-      await context.proposalRepo.submitQuizAnswers(
-        proposalId: proposalId,
-        answers: answers,
-        elapsedSeconds: challenge.durationSeconds,
+      ok = await AppFeedback.guard(
+        context,
+        () => context.proposalRepo.submitQuizAnswers(
+          proposalId: proposalId,
+          answers: answers,
+          elapsedSeconds: challenge.durationSeconds,
+        ),
       );
     } else {
       final String? answer =
           await ChallengeSheet.showWritten(context, challenge);
       if (answer == null || !mounted) return;
-      await context.proposalRepo.submitWrittenAnswer(
-        proposalId: proposalId,
-        fullAnswer: answer,
-        elapsedSeconds: challenge.durationSeconds,
+      ok = await AppFeedback.guard(
+        context,
+        () => context.proposalRepo.submitWrittenAnswer(
+          proposalId: proposalId,
+          fullAnswer: answer,
+          elapsedSeconds: challenge.durationSeconds,
+        ),
       );
     }
-    if (mounted) {
+    if (ok && mounted) {
       AppFeedback.success(context, 'Challenge submitted.');
     }
   }
@@ -196,11 +204,17 @@ class _FreelancerViewState extends State<_FreelancerView> {
     await pushed;
 
     if (callId != null) {
-      await proposals.recordInterviewCall(proposalId: mine.id, callId: callId);
-      if (context.mounted) {
-        AppFeedback.success(
-            context, 'Interview recorded against your proposal.');
-      }
+      if (!context.mounted) return;
+      await AppFeedback.guard(
+        context,
+        () =>
+            proposals.recordInterviewCall(proposalId: mine.id, callId: callId),
+        onSuccess: 'Interview recorded against your proposal.',
+        // The interview already happened; if the link fails, the proposal
+        // still reads "not taken" and the person needs to know that.
+        onError: 'The interview finished, but it could not be recorded '
+            'against your proposal. Try again from the listing.',
+      );
     } else if (context.mounted) {
       AppFeedback.error(context, calls.error ?? 'Could not start the call.');
     }
@@ -212,7 +226,15 @@ class _FreelancerViewState extends State<_FreelancerView> {
   /// enforces, not a UI decision.
   Future<void> _showMySubmission(BuildContext context, Proposal mine) async {
     final ProposalRepository proposals = context.proposalRepo;
-    final String? answer = await proposals.fetchMyFullAnswer(mine.id);
+    final String? answer;
+    try {
+      answer = await proposals.fetchMyFullAnswer(mine.id);
+    } on Object catch (e) {
+      // Previously unguarded, so a failed read meant the sheet simply never
+      // opened — indistinguishable from a dead button.
+      if (context.mounted) AppFeedback.error(context, describeFirestoreError(e));
+      return;
+    }
     if (!context.mounted) return;
     await showModalBottomSheet<void>(
       context: context,
@@ -298,6 +320,13 @@ class _FreelancerViewState extends State<_FreelancerView> {
           : context.proposalRepo
               .watchMineForJob(jobId: job.id, freelancerId: myUid),
       builder: (BuildContext context, AsyncSnapshot<Proposal?> snap) {
+        // A failed read must not read as "you have not applied": that offers
+        // the apply form to someone who already applied, and a second submit
+        // is a duplicate proposal the owner then has to untangle. Say the
+        // state is unknown instead.
+        if (snap.hasError) {
+          return FErrorState(message: describeFirestoreError(snap.error!));
+        }
         final Proposal? mine = snap.data;
         final bool submitted =
             mine != null && mine.status != ProposalStatus.draft;
@@ -648,7 +677,12 @@ class _OwnerView extends StatelessWidget {
                     confirmLabel: 'Close',
                     destructive: true,
                   );
-                  if (ok) await jobs.setStatus(job.id, JobStatus.closed);
+                  if (!ok || !context.mounted) return;
+                  await AppFeedback.guard(
+                    context,
+                    () => jobs.setStatus(job.id, JobStatus.closed),
+                    onSuccess: 'Listing closed.',
+                  );
                 },
               ),
             ),
@@ -762,8 +796,11 @@ class _ApplicantCard extends StatelessWidget {
                   proposal.challenge.completed) ...<Widget>[
                 const SizedBox(width: FSpace.md),
                 InkWell(
-                  onTap: () => context.proposalRepo
-                      .gradeQuiz(jobId: job.id, proposal: proposal),
+                  onTap: () => AppFeedback.guard(
+                    context,
+                    () => context.proposalRepo
+                        .gradeQuiz(jobId: job.id, proposal: proposal),
+                  ),
                   child: Text(
                     'Grade now',
                     style: FType.pill
@@ -834,9 +871,12 @@ class _ApplicantCard extends StatelessWidget {
                     background: FColors.blueTint,
                     color: FColors.blue,
                     fontSize: 11,
-                    onPressed: () => context.engagementRepo.shortlist(
-                      proposal: proposal,
-                      on: proposal.status != ProposalStatus.shortlisted,
+                    onPressed: () => AppFeedback.guard(
+                      context,
+                      () => context.engagementRepo.shortlist(
+                        proposal: proposal,
+                        on: proposal.status != ProposalStatus.shortlisted,
+                      ),
                     ),
                   ),
                 if (!job.isHired &&
@@ -943,6 +983,12 @@ class _EscrowPanelState extends State<_EscrowPanel> {
     return StreamBuilder<List<Proposal>>(
       stream: context.proposalRepo.watchForJob(job.id),
       builder: (BuildContext context, AsyncSnapshot<List<Proposal>> snap) {
+        // Without this the whole escrow panel disappeared on a failed read,
+        // so the client could not release a milestone and nothing on screen
+        // suggested there was anything to release.
+        if (snap.hasError) {
+          return FErrorState(message: describeFirestoreError(snap.error!));
+        }
         Proposal? hired;
         for (final Proposal p in snap.data ?? const <Proposal>[]) {
           if (p.id == job.hiredProposalId) hired = p;
