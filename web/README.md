@@ -30,6 +30,9 @@ workflow, search filters, workspace views. The visual language stays Felicek —
 
 ## Status
 
-Scaffold only. Built so far: project config, design tokens, a Firebase module
-that degrades to a readable message instead of a blank page, and a landing
-page. Not built: auth, dashboards, jobs, proposals, messaging, KYC, escrow.
+**Auth is built.** Sign in, sign up with role selection, password reset,
+session provider with the same routing stages as the app (booting → signedOut →
+onboarding → verification → ready), and a 12-second watchdog so a profile that
+never loads shows a reason instead of spinning forever.
+
+**Not built yet:** dashboards, jobs, proposals, messaging, KYC, escrow.
