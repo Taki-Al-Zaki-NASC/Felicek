@@ -1,6 +1,6 @@
 import {
   addDoc, collection, doc, getDoc, increment, runTransaction,
-  serverTimestamp, setDoc, updateDoc,
+  serverTimestamp, setDoc, updateDoc, writeBatch,
 } from 'firebase/firestore';
 import { firebase } from './firebase';
 import type { Job, Milestone, Proposal } from './schema';
@@ -265,3 +265,53 @@ const summarise = (c: CheckResult) => ({
   brightness: Number(c.brightness.toFixed(1)),
   width: c.width, height: c.height,
 });
+
+/**
+ * Completes the profile and clears the onboarding stage.
+ *
+ * Sets both `onboarded` and `profileComplete`, because SessionController and
+ * the web gate both require the pair — setting one leaves the account stuck on
+ * a screen it just finished.
+ *
+ * Writes profiles/{uid} too: that is the public half other people read, and a
+ * name saved only on the private document leaves the person appearing as
+ * "Felicek user" everywhere else.
+ */
+export async function completeProfile(input: {
+  uid: string;
+  displayName: string;
+  title: string;
+  bio: string;
+  location: string;
+  skills: string[];
+  hourlyRate: number | null;
+  role: string;
+}) {
+  const fb = firebase();
+  if (!fb) throw new Error('Firebase is not configured.');
+
+  const name = input.displayName.trim();
+  const shared = {
+    displayName: name,
+    title: input.title.trim(),
+    bio: input.bio.trim(),
+    location: input.location.trim(),
+    skills: input.skills,
+    hourlyRateCents: input.hourlyRate === null ? null : Math.round(input.hourlyRate * 100),
+  };
+
+  const batch = writeBatch(fb.db);
+  batch.set(doc(fb.db, 'users', input.uid), {
+    ...shared,
+    onboarded: true,
+    profileComplete: true,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  batch.set(doc(fb.db, 'profiles', input.uid), {
+    uid: input.uid,
+    role: input.role,
+    ...shared,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  await batch.commit();
+}

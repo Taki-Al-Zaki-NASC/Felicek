@@ -76,7 +76,7 @@ export default function Verify() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="font-serif text-3xl font-semibold">Verification</h1>
+      <h1 className="font-serif text-2xl font-semibold sm:text-3xl">Verification</h1>
       <p className="mt-2 text-sm text-ink-muted">
         Every Felicek account needs identity on file and a cleared deposit
         before it can post or bid. There is no skip.
@@ -108,7 +108,7 @@ export default function Verify() {
               <span className="text-xs font-semibold text-ink-muted">Document number</span>
               <input value={reference}
                 onChange={(e) => { setReference(e.target.value); setRefError(null); }}
-                className="mt-1.5 w-full rounded-field border border-border bg-surface px-3.5 py-3 text-sm outline-none focus:border-teal" />
+                className="mt-1.5 w-full rounded-field border border-border bg-surface px-3.5 py-3 text-base outline-none focus:border-teal sm:text-sm" />
               {refError && <span className="mt-1 block text-xs text-danger">{refError}</span>}
             </label>
 

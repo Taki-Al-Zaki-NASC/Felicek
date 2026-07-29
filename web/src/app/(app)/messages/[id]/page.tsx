@@ -90,7 +90,7 @@ export default function Thread({ params }: { params: Promise<{ id: string }> }) 
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-9rem)] max-w-3xl flex-col">
+    <div className="mx-auto flex h-[calc(100dvh-13rem)] max-w-3xl flex-col md:h-[calc(100dvh-9rem)]">
       <header className="flex items-baseline justify-between border-b border-border pb-3">
         <div>
           <h1 className="font-serif text-xl font-semibold">{otherName}</h1>
@@ -111,7 +111,7 @@ export default function Thread({ params }: { params: Promise<{ id: string }> }) 
             const at = (m.sentAt ?? m.clientSentAt)?.toDate();
             return (
               <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[75%] rounded-card px-3.5 py-2.5 ${
+                <div className={`max-w-[85%] rounded-card sm:max-w-[75%] px-3.5 py-2.5 ${
                   mine ? 'bg-ink-strong text-canvas' : 'border border-border bg-surface'
                 }`}>
                   {m.imageBase64 && (
@@ -147,7 +147,7 @@ export default function Thread({ params }: { params: Promise<{ id: string }> }) 
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Write a message"
-          className="flex-1 rounded-field border border-border bg-surface px-3.5 py-3 text-sm outline-none focus:border-teal"
+          className="flex-1 rounded-field border border-border bg-surface px-3.5 py-3 text-base outline-none focus:border-teal sm:text-sm"
         />
         <Button type="submit" disabled={!draft.trim()} busy={sending}>Send</Button>
       </form>

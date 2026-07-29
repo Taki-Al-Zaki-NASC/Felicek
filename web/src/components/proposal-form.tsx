@@ -116,14 +116,14 @@ export function ProposalForm({ job }: { job: Job }) {
         <label className="block">
           <span className="text-xs font-semibold text-ink-muted">Your bid</span>
           <input value={bid} onChange={(e) => setBid(e.target.value)} placeholder="$0.00"
-            className="mt-1.5 w-full rounded-field border border-border px-3.5 py-3 text-sm outline-none focus:border-teal" />
+            className="mt-1.5 w-full rounded-field border border-border px-3.5 py-3 text-base outline-none focus:border-teal sm:text-sm" />
         </label>
 
         <label className="block">
           <span className="text-xs font-semibold text-ink-muted">Cover note</span>
           <textarea value={note} rows={5} onChange={(e) => setNote(e.target.value)}
             placeholder="Why you, and how you would approach it."
-            className="mt-1.5 w-full rounded-field border border-border px-3.5 py-3 text-sm outline-none focus:border-teal" />
+            className="mt-1.5 w-full rounded-field border border-border px-3.5 py-3 text-base outline-none focus:border-teal sm:text-sm" />
         </label>
 
         {fees && (

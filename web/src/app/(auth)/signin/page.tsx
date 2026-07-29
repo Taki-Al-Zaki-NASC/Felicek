@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { RedirectWhenSignedIn } from '@/components/auth-redirect';
 import { describeAuthError, signIn } from '@/lib/auth-actions';
 
 export default function SignIn() {
@@ -25,7 +26,8 @@ export default function SignIn() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <h1 className="font-serif text-3xl font-semibold">Welcome back</h1>
+      <RedirectWhenSignedIn />
+      <h1 className="font-serif text-2xl font-semibold sm:text-3xl">Welcome back</h1>
       <p className="mt-2 text-sm text-ink-muted">Sign in to your Felicek account.</p>
 
       <form onSubmit={submit} className="mt-8 space-y-4">
@@ -65,7 +67,7 @@ function Field({ label, type, value, onChange }: {
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1.5 w-full rounded-field border border-border bg-surface px-3.5 py-3 text-sm outline-none focus:border-teal"
+        className="mt-1.5 w-full rounded-field border border-border bg-surface px-3.5 py-3 text-base outline-none focus:border-teal sm:text-sm"
       />
     </label>
   );

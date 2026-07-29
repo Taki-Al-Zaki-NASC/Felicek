@@ -64,7 +64,7 @@ function OwnerView({ job }: { job: Job }) {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+    <div className="grid gap-6 md:gap-8 lg:grid-cols-[1fr_320px]">
       <div>
         <JobHeader job={job} />
         <div className="mt-8">
@@ -95,9 +95,9 @@ function OwnerView({ job }: { job: Job }) {
 
 function FreelancerView({ job }: { job: Job }) {
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+    <div className="grid gap-6 md:gap-8 lg:grid-cols-[1fr_340px]">
+      <aside className="order-first lg:order-last"><ProposalForm job={job} /></aside>
       <JobHeader job={job} />
-      <aside><ProposalForm job={job} /></aside>
     </div>
   );
 }
@@ -112,7 +112,7 @@ function JobHeader({ job }: { job: Job }) {
           <Pill tone={status === 'filled' ? 'teal' : 'neutral'}>{status}</Pill>
         )}
       </div>
-      <h1 className="mt-3 font-serif text-3xl font-semibold">{job.title}</h1>
+      <h1 className="mt-3 font-serif text-2xl font-semibold sm:text-3xl">{job.title}</h1>
       <p className="mt-1 text-sm text-ink-muted">
         Posted by {job.ownerName}
         {job.budget ? ` · ${job.budget}` : ''}

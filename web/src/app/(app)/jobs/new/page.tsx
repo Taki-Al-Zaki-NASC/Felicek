@@ -67,7 +67,7 @@ export default function PostJob() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="font-serif text-3xl font-semibold">Post a job</h1>
+      <h1 className="font-serif text-2xl font-semibold sm:text-3xl">Post a job</h1>
       <p className="mt-1 text-sm text-ink-muted">
         Only identity-verified, deposit-backed freelancers can bid on this.
       </p>
@@ -111,14 +111,14 @@ export default function PostJob() {
                   onChange={(e) => setMilestones(milestones.map((x, j) =>
                     j === i ? { ...x, label: e.target.value } : x))}
                   placeholder="Stage"
-                  className="min-w-0 flex-1 rounded-field border border-border px-3 py-2 text-sm outline-none focus:border-teal"
+                  className="min-w-0 flex-1 rounded-field border border-border px-3 py-2 text-base outline-none focus:border-teal sm:text-sm"
                 />
                 <input
                   value={m.amount}
                   onChange={(e) => setMilestones(milestones.map((x, j) =>
                     j === i ? { ...x, amount: e.target.value } : x))}
                   placeholder="$0.00"
-                  className="w-28 rounded-field border border-border px-3 py-2 text-sm outline-none focus:border-teal"
+                  className="w-28 rounded-field border border-border px-3 py-2 text-base outline-none focus:border-teal sm:text-sm"
                 />
                 {milestones.length > 1 && (
                   <button type="button" aria-label={`Remove milestone ${i + 1}`}
@@ -155,7 +155,7 @@ function Text({ label, value, onChange, hint }: {
     <label className="block">
       <span className="text-xs font-semibold text-ink-muted">{label}</span>
       <input value={value} onChange={(e) => onChange(e.target.value)}
-        className="mt-1.5 w-full rounded-field border border-border bg-surface px-3.5 py-3 text-sm outline-none focus:border-teal" />
+        className="mt-1.5 w-full rounded-field border border-border bg-surface px-3.5 py-3 text-base outline-none focus:border-teal sm:text-sm" />
       {hint && <span className="mt-1 block text-xs text-ink-faint">{hint}</span>}
     </label>
   );
@@ -168,7 +168,7 @@ function Area({ label, value, onChange, hint }: {
     <label className="block">
       <span className="text-xs font-semibold text-ink-muted">{label}</span>
       <textarea value={value} rows={6} onChange={(e) => onChange(e.target.value)}
-        className="mt-1.5 w-full rounded-field border border-border bg-surface px-3.5 py-3 text-sm outline-none focus:border-teal" />
+        className="mt-1.5 w-full rounded-field border border-border bg-surface px-3.5 py-3 text-base outline-none focus:border-teal sm:text-sm" />
       {hint && <span className="mt-1 block text-xs text-ink-faint">{hint}</span>}
     </label>
   );

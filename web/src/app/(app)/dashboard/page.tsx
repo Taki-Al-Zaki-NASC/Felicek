@@ -107,7 +107,7 @@ function FreelancerHome({ uid, name }: { uid: string; name: string }) {
 function Header({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div>
-      <h1 className="font-serif text-3xl font-semibold">{title}</h1>
+      <h1 className="font-serif text-2xl font-semibold sm:text-3xl">{title}</h1>
       <p className="mt-1 text-sm text-ink-muted">{subtitle}</p>
     </div>
   );

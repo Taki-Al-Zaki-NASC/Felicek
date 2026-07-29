@@ -46,7 +46,7 @@ export default function BrowseJobs() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-3xl font-semibold">Find work</h1>
+          <h1 className="font-serif text-2xl font-semibold sm:text-3xl">Find work</h1>
           <p className="mt-1 text-sm text-ink-muted">
             Every listing here is from an identity-verified, deposit-backed account.
           </p>
@@ -59,22 +59,22 @@ export default function BrowseJobs() {
         )}
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[240px_1fr]">
-        <aside className="space-y-5">
+      <div className="mt-6 grid gap-5 lg:grid-cols-[240px_1fr] lg:gap-6">
+        <aside className="space-y-4 lg:space-y-5">
           <div>
             <SectionLabel>Search</SectionLabel>
             <input
               value={term}
               onChange={(e) => setTerm(e.target.value)}
               placeholder="Title, skill, keyword"
-              className="mt-2 w-full rounded-field border border-border bg-surface px-3.5 py-2.5 text-sm outline-none focus:border-teal"
+              className="mt-2 w-full rounded-field border border-border bg-surface px-3.5 py-2.5 text-base outline-none focus:border-teal sm:text-sm"
             />
           </div>
 
           {skills.length > 0 && (
             <div>
               <SectionLabel>Skills</SectionLabel>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="mt-2 flex flex-wrap gap-1.5 max-lg:max-h-24 max-lg:overflow-y-auto">
                 {skills.map(([s, n]) => (
                   <button
                     key={s}

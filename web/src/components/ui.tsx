@@ -58,7 +58,8 @@ export function Button({
   busy?: boolean;
   className?: string;
 }) {
-  const base = 'rounded-button px-5 py-3 text-sm font-bold transition disabled:opacity-50';
+  const base = 'min-h-[44px] rounded-button px-5 py-3 text-sm font-bold transition '
+    + 'disabled:cursor-not-allowed disabled:opacity-50';
   const tone = {
     primary: 'bg-ink-strong text-canvas hover:opacity-90',
     secondary: 'border border-border-strong bg-surface text-ink hover:bg-backdrop',

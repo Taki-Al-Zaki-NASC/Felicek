@@ -19,7 +19,7 @@ export default function Inbox() {
 
   return (
     <>
-      <h1 className="font-serif text-3xl font-semibold">Messages</h1>
+      <h1 className="font-serif text-2xl font-semibold sm:text-3xl">Messages</h1>
       <p className="mt-1 text-sm text-ink-muted">
         Conversations with clients and freelancers you are working with.
       </p>
