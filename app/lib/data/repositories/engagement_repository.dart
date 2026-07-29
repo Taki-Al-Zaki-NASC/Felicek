@@ -6,6 +6,7 @@ import '../models/proposal.dart';
 import '../models/review.dart';
 import '../models/wallet.dart';
 import '../services/firestore_refs.dart';
+import 'chat_repository.dart';
 
 /// The money-and-outcome half of the marketplace: hiring, releasing escrow
 /// milestone by milestone, completing an engagement, and reviewing it.
@@ -257,6 +258,17 @@ class EngagementRepository {
     );
 
     if (proposal.chatId != null) {
+      // Hand over the clean, un-watermarked deliverables now this is paid.
+      //
+      // Deliberately outside the transaction and best-effort: the money has
+      // already moved, and failing a completed payment because a file flag did
+      // not flip would be the wrong trade. Worst case the freelancer resends.
+      try {
+        await ChatRepository(_db).releaseDeliverables(proposal.chatId!);
+      } on Object {
+        // Retried by releasing the next milestone, or by resending.
+      }
+
       await _system(
         chatId: proposal.chatId!,
         actorId: job.ownerId,

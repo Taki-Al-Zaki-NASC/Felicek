@@ -73,5 +73,13 @@ Thumbs.db
 
 # ── Node (Firestore rules tests) ─────────────────────────────────────────
 firebase/tests/node_modules/
+
+# Node, anywhere. The web app carries its own .gitignore, but that file only
+# exists on the web branch — so on any other branch `git add -A` sweeps the
+# whole dependency tree in. That happened: one 136 MB binary in node_modules
+# is over GitHub's file size limit, and the push was rejected.
+node_modules/
+.next/
+tsconfig.tsbuildinfo
 firebase/**/*-debug.log
 firebase/tests/firebase.json

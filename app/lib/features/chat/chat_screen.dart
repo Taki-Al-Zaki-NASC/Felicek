@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/services.dart';
@@ -100,6 +103,86 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  /// Shares an image, with a confirmation before anything leaves the device.
+  ///
+  /// The prompt is not ceremony. Sharing a deliverable is irreversible — the
+  /// other side has seen it — and the common accident is attaching the wrong
+  /// file, or attaching source before being paid for it. Naming what is about
+  /// to happen, and whether it will be watermarked, is the cheapest guard
+  /// available.
+  Future<void> _attach(ChatController c) async {
+    if (_sending) return;
+    final ImagePicker picker = ImagePicker();
+
+    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: FColors.canvas,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const SizedBox(height: FSpace.lg),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined, size: 20),
+              title: const Text('Take a photo', style: FType.bodyXs),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.image_outlined, size: 20),
+              title: const Text('Choose from library', style: FType.bodyXs),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+            ),
+            const SizedBox(height: FSpace.md),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    final XFile? shot = await picker.pickImage(source: source, imageQuality: 92);
+    if (shot == null || !mounted) return;
+
+    // Watermark when this chat is tied to a job that still has money in
+    // escrow: that is exactly the window where a clean file should not leave
+    // yet.
+    final bool watermark = c.jobId != null;
+
+    final bool confirmed = await AppFeedback.confirm(
+      context,
+      title: 'Share this file?',
+      message: watermark
+          ? 'It will be sent as a watermarked preview. The clean original is '
+              'released automatically when the client releases a milestone.\n\n'
+              'Sharing cannot be undone.'
+          : 'This will be sent at full quality with no watermark.\n\n'
+              'Sharing cannot be undone.',
+      confirmLabel: 'Share',
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _sending = true);
+    try {
+      final Uint8List bytes = await File(shot.path).readAsBytes();
+      final bool ok = await c.sendImage(
+        bytes: bytes,
+        attachmentName: shot.name,
+        watermark: watermark,
+      );
+      if (!ok && mounted) {
+        AppFeedback.error(context, c.error ?? 'That file could not be sent.');
+      }
+    } on Object catch (e) {
+      if (mounted) AppFeedback.error(context, describeFirestoreError(e));
+    } finally {
+      // Without the finally a throw would leave the composer disabled for the
+      // rest of the session — the same trap the text send path documents.
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
   Future<void> _send() async {
     final ChatController c = _controller!;
     final String text = _composer.text;
@@ -168,6 +251,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   focusNode: _composerFocus,
                   sending: _sending,
                   onSend: _send,
+                  onAttach: () => _attach(c),
                 ),
               ],
             ),
@@ -612,6 +696,7 @@ class _Composer extends StatelessWidget {
     required this.focusNode,
     required this.sending,
     required this.onSend,
+    required this.onAttach,
   });
 
   final ChatController controller;
@@ -619,6 +704,7 @@ class _Composer extends StatelessWidget {
   final FocusNode focusNode;
   final bool sending;
   final VoidCallback onSend;
+  final VoidCallback onAttach;
 
   @override
   Widget build(BuildContext context) {
@@ -655,6 +741,12 @@ class _Composer extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: <Widget>[
+                  IconButton(
+                    onPressed: sending ? null : onAttach,
+                    icon: const Icon(Icons.attach_file_rounded, size: 20),
+                    color: FColors.inkMuted,
+                    tooltip: 'Share a file',
+                  ),
                   Expanded(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxHeight: 120),
