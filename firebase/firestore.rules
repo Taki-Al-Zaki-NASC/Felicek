@@ -308,7 +308,7 @@ service cloud.firestore {
       // The recipient cannot flip `released` themselves: only the sender may
       // write here at all.
       match /deliverables/{messageId} {
-        allow read: if isSignedIn()
+        allow read: if signedIn()
           && (isSelf(resource.data.senderId)
               || (isSelf(resource.data.recipientId)
                   && resource.data.released == true));
