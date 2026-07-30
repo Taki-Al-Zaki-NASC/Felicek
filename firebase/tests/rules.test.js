@@ -26,10 +26,14 @@ import {
 import {
   doc,
   getDoc,
+  getDocs,
   setDoc,
   updateDoc,
   addDoc,
   collection,
+  query,
+  where,
+  orderBy,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
@@ -513,6 +517,100 @@ describe('real client write shapes — the ones the app and website actually sen
         createdAt: serverTimestamp(),
       }),
     );
+  });
+});
+
+describe('query shapes — rules are not filters', () => {
+  // A denied *query* is the failure mode that looks like an empty list rather
+  // than an error, so these pin the exact constraint sets the clients use.
+  // Firestore rejects a whole query unless its constraints prove every
+  // returned document is readable; it does not silently drop the ones that
+  // are not.
+  before(async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, 'users/qowner'), verifiedClient('qowner'));
+      await setDoc(doc(db, 'users/qfreelancer'), verifiedFreelancer('qfreelancer'));
+      await setDoc(doc(db, 'jobs/qjob'), {
+        ownerId: 'qowner', ownerName: 'Q', title: 'Q job', status: 'open',
+        createdAt: Timestamp.now(),
+      });
+      await setDoc(doc(db, 'proposals/qjob__qfreelancer'), {
+        jobId: 'qjob',
+        jobOwnerId: 'qowner',
+        freelancerId: 'qfreelancer',
+        freelancerName: 'QF',
+        status: 'submitted',
+        createdAt: Timestamp.now(),
+      });
+      await setDoc(doc(db, 'chats/qchat'), {
+        participantIds: ['qowner', 'qfreelancer'],
+        participants: { qowner: 'Q', qfreelancer: 'QF' },
+        lastMessageAt: Timestamp.now(),
+      });
+    });
+  });
+
+  it('a freelancer can list their own proposals', async () => {
+    const f = testEnv.authenticatedContext('qfreelancer').firestore();
+    await assertSucceeds(getDocs(query(
+      collection(f, 'proposals'),
+      where('freelancerId', '==', 'qfreelancer'),
+      orderBy('createdAt', 'desc'),
+    )));
+  });
+
+  it('an owner can list proposals sent to them', async () => {
+    const o = testEnv.authenticatedContext('qowner').firestore();
+    await assertSucceeds(getDocs(query(
+      collection(o, 'proposals'),
+      where('jobOwnerId', '==', 'qowner'),
+      orderBy('createdAt', 'desc'),
+    )));
+  });
+
+  it('listing a job\'s proposals by jobId alone is refused', async () => {
+    // The website used exactly this. jobId does not prove the reader is the
+    // owner or the bidder, so the rule cannot be satisfied from constraints.
+    const o = testEnv.authenticatedContext('qowner').firestore();
+    await assertFails(getDocs(query(
+      collection(o, 'proposals'),
+      where('jobId', '==', 'qjob'),
+      orderBy('createdAt', 'desc'),
+    )));
+  });
+
+  it('listing a job\'s proposals succeeds when scoped to the owner', async () => {
+    const o = testEnv.authenticatedContext('qowner').firestore();
+    await assertSucceeds(getDocs(query(
+      collection(o, 'proposals'),
+      where('jobId', '==', 'qjob'),
+      where('jobOwnerId', '==', 'qowner'),
+      orderBy('createdAt', 'desc'),
+    )));
+  });
+
+  it('chats are listed by participantIds, not participants', async () => {
+    const f = testEnv.authenticatedContext('qfreelancer').firestore();
+    await assertSucceeds(getDocs(query(
+      collection(f, 'chats'),
+      where('participantIds', 'array-contains', 'qfreelancer'),
+      orderBy('lastMessageAt', 'desc'),
+    )));
+    // `participants` is the {uid: name} map, so array-contains against it
+    // matches nothing and the rule's participantIds check cannot be proven.
+    await assertFails(getDocs(query(
+      collection(f, 'chats'),
+      where('participants', 'array-contains', 'qfreelancer'),
+      orderBy('lastMessageAt', 'desc'),
+    )));
+  });
+
+  it('a stranger cannot list someone else\'s chats', async () => {
+    const s = testEnv.authenticatedContext('stranger').firestore();
+    await assertFails(getDocs(query(
+      collection(s, 'chats'),
+      where('participantIds', 'array-contains', 'qfreelancer'),
+    )));
   });
 });
 
