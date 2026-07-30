@@ -143,10 +143,11 @@ matter:
 - APKs are served from GitHub Releases (no bandwidth cap) rather than
   Firebase Hosting (360 MB/day free).
 
-At ~12 users this sits far inside the free quotas. The scaling path when that
-changes: Blaze plan, Cloud Functions for notification fan-out and payment
-reconciliation, Cloud Storage for media, and a TURN server for calls behind
-strict NATs.
+At ~12 users this sits far inside the free quotas. Four features genuinely
+cannot run on Spark — push notifications, video watermarking, the payment
+webhook, and third-party identity proofing. [docs/BLAZE.md](docs/BLAZE.md)
+covers why each one is blocked, what it costs, and the exact steps to turn it
+on, including the budget alert to set before you upgrade.
 
 ## Play Store readiness
 

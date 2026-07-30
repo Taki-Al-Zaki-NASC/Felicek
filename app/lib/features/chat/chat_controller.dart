@@ -64,6 +64,13 @@ class ChatController extends ChangeNotifier {
   ChatThread? get thread => _thread;
   bool get loading => _loading;
   String? get error => _error;
+
+  /// The job this conversation belongs to, if any.
+  ///
+  /// Drives whether a shared image is watermarked: a chat tied to a job is
+  /// one where money may still be in escrow, which is exactly the window in
+  /// which a clean deliverable should not leave yet.
+  String? get jobId => _thread?.jobId;
   bool get loadingOlder => _loadingOlder;
   bool get reachedStart => _reachedStart;
   Message? get editing => _editing;

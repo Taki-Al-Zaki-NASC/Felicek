@@ -63,7 +63,6 @@ class _KycScreenState extends State<KycScreen> {
       await context.userRepo.submitIdentityDocument(
         uid: user.uid,
         type: type,
-        reference: capture.reference,
         documentImageBase64: capture.documentBase64,
         selfieImageBase64: capture.selfieBase64,
         autoCheck: capture.autoCheck,

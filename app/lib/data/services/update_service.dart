@@ -424,11 +424,29 @@ class UpdateService extends ChangeNotifier {
           // or installing by hand.
           error: 'Android could not start the installer (${e.code}). '
               'The download is saved — try again, or install the APK from '
-              'your Downloads folder.',
+              'your Downloads folder.\n\n$signatureMismatchHint',
         ),
       );
     }
   }
+
+  /// Why an update that downloaded and verified can still refuse to install.
+  ///
+  /// Android identifies an app by package name *and* signing key, and refuses
+  /// an update signed by a different key (INSTALL_FAILED_UPDATE_INCOMPATIBLE).
+  /// Unsigned CI builds fall back to Android's debug key, which is generated
+  /// per machine — so two builds from two CI runs have different keys and
+  /// cannot replace each other, however correct the manifest and checksum are.
+  ///
+  /// This is the one updater failure that looks like nothing happening: the
+  /// download succeeds, the SHA-256 matches, and the install is rejected by
+  /// the platform. Naming it beats leaving someone to conclude the updater is
+  /// broken.
+  static const String signatureMismatchHint =
+      'If the install is refused outright, this build and the installed one '
+      'were signed with different keys — Android never allows that swap. '
+      'Uninstall Felicek and install this version once; updates after that '
+      'will apply normally.';
 
   /// Whether Android will let this app install packages. Used to explain the
   /// permission before sending the user to Settings.
