@@ -383,6 +383,139 @@ describe('users.kyc.depositPaid — cannot be self-granted', () => {
   });
 });
 
+describe('real client write shapes — the ones the app and website actually send', () => {
+  // These pin the *exact* payloads UserRepository.submitIdentityDocument (Dart)
+  // and submitIdentity (TypeScript) send, rather than a hand-written payload
+  // that happens to satisfy the rule. Both clients write `kyc` as a nested map
+  // with merge:true, which replaces the whole map rather than merging into it —
+  // so every sibling field, including depositPaid, disappears from the written
+  // document. The update rule reads request.resource.data.kyc.depositPaid, and
+  // reading a missing key is an evaluation error, not `undefined`.
+  const identitySubmission = {
+    kyc: {
+      idSubmitted: true,
+      idDocumentType: 'passport',
+      hasDocumentImage: true,
+      hasSelfieImage: true,
+      stage: 'verified',
+      submittedAt: serverTimestamp(),
+    },
+    updatedAt: serverTimestamp(),
+  };
+
+  it('submitting identity does not wipe depositPaid off the record', async () => {
+    await seed((db) =>
+      setDoc(doc(db, 'users/ivan'), {
+        email: 'ivan@example.com',
+        displayName: 'Ivan',
+        role: 'freelancer',
+        kyc: { idSubmitted: false, depositPaid: true, stage: 'none' },
+      }),
+    );
+    const ivan = testEnv.authenticatedContext('ivan', { email: 'ivan@example.com' })
+      .firestore();
+
+    await assertSucceeds(
+      setDoc(doc(ivan, 'users/ivan'), identitySubmission, { merge: true }),
+    );
+
+    // The write succeeding is not enough: depositPaid must still be there
+    // afterwards, or the account silently loses its cleared payment.
+    await seed(async (db) => {
+      const after = await getDoc(doc(db, 'users/ivan'));
+      assert.equal(
+        after.data().kyc.depositPaid, true,
+        'kyc.depositPaid was wiped by the identity submission',
+      );
+      assert.equal(after.data().kyc.idSubmitted, true);
+    });
+  });
+
+  it('an unpaid account submitting identity stays unpaid', async () => {
+    await seed((db) =>
+      setDoc(doc(db, 'users/wendy'), {
+        email: 'wendy@example.com',
+        displayName: 'Wendy',
+        role: 'freelancer',
+        kyc: { idSubmitted: false, depositPaid: false, stage: 'none' },
+      }),
+    );
+    const wendy = testEnv.authenticatedContext('wendy', { email: 'wendy@example.com' })
+      .firestore();
+
+    await assertSucceeds(
+      setDoc(doc(wendy, 'users/wendy'), identitySubmission, { merge: true }),
+    );
+
+    await seed(async (db) => {
+      const after = await getDoc(doc(db, 'users/wendy'));
+      assert.equal(
+        after.data().kyc.depositPaid, false,
+        'submitting identity must never flip depositPaid',
+      );
+    });
+  });
+
+  it('the website signUp batch creates both documents', async () => {
+    // The exact payload auth-actions.ts signUp() sends.
+    //
+    // `verified: false` on the profile is load-bearing, not decorative: the
+    // create rule tests `request.resource.data.verified == false`, and rules
+    // raise an evaluation error on a missing key rather than reading it as
+    // undefined. Omitting it denied the whole batch — and since the profile
+    // shares a batch with users/{uid}, neither document was written and every
+    // web sign-up failed with "Missing or insufficient permissions". The
+    // Android client always sent it (PublicProfile.toMap), which is why the
+    // app worked and only the website broke. Delete the field to watch this
+    // test go red.
+    const zoe = testEnv.authenticatedContext('zoe', { email: 'zoe@example.com' })
+      .firestore();
+
+    await assertSucceeds(
+      setDoc(doc(zoe, 'users/zoe'), {
+        email: 'zoe@example.com',
+        displayName: 'Zoe',
+        role: 'freelancer',
+        onboarded: false,
+        profileComplete: false,
+        kyc: {
+          idSubmitted: false,
+          depositPaid: false,
+          stage: 'none',
+          depositAmountCents: 2000,
+        },
+        createdAt: serverTimestamp(),
+      }),
+    );
+    await assertSucceeds(
+      setDoc(doc(zoe, 'profiles/zoe'), {
+        uid: 'zoe',
+        displayName: 'Zoe',
+        role: 'freelancer',
+        verified: false,
+        createdAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('a profile cannot be created already claiming to be verified', async () => {
+    // The other half of the same rule: `verified` is required, and it is
+    // required to start false. Nobody self-certifies into a verified badge.
+    const mallory = testEnv
+      .authenticatedContext('mallory', { email: 'mallory@example.com' })
+      .firestore();
+    await assertFails(
+      setDoc(doc(mallory, 'profiles/mallory'), {
+        uid: 'mallory',
+        displayName: 'Mallory',
+        role: 'freelancer',
+        verified: true,
+        createdAt: serverTimestamp(),
+      }),
+    );
+  });
+});
+
 describe('jobs — posting requires a verified account', () => {
   it('a verified client can publish', async () => {
     await seed((db) => setDoc(doc(db, 'users/vclient'), verifiedClient('vclient')));
