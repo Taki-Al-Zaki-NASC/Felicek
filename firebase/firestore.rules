@@ -275,6 +275,24 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── contactMessages/{id} — the marketing site's contact form ─────────
+    // Write-only, deliberately: there is no admin panel, so the only reader
+    // is a human with Firebase console access. No auth required — a visitor
+    // asking a question before signing up is the whole point of the form.
+
+    match /contactMessages/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['name', 'email', 'message', 'createdAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() < 200
+        && request.resource.data.email is string
+        && request.resource.data.email.size() > 0 && request.resource.data.email.size() < 320
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0 && request.resource.data.message.size() < 5000
+        // Forces serverTimestamp() rather than a client-supplied date.
+        && request.resource.data.createdAt == request.time;
+      allow read, update, delete: if false;
+    }
+
     // ── calls/{callId} — WebRTC signaling ────────────────────────────────
 
     match /calls/{callId} {
