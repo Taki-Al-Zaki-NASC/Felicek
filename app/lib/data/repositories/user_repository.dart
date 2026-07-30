@@ -150,7 +150,7 @@ class UserRepository {
   Future<void> submitIdentityDocument({
     required String uid,
     required IdDocumentType type,
-    required String reference,
+    String? reference,
     String? documentImageBase64,
     String? selfieImageBase64,
     Map<String, dynamic>? autoCheck,
@@ -180,7 +180,11 @@ class UserRepository {
         'kyc': <String, dynamic>{
           'idSubmitted': true,
           'idDocumentType': type.key,
-          'idReference': reference,
+          // Optional now: verification is the photos. A number adds nothing a
+          // reviewer cannot read off the document itself, and storing one is
+          // extra personal data for no gain.
+          if (reference != null && reference.trim().isNotEmpty)
+            'idReference': reference.trim(),
           'hasDocumentImage': documentImageBase64 != null,
           'hasSelfieImage': selfieImageBase64 != null,
           'stage':

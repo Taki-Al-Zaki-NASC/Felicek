@@ -8,20 +8,17 @@ import '../../core/theme/tokens.dart';
 import '../../core/theme/typography.dart';
 import '../../core/utils/image_codec.dart';
 import '../../core/widgets/f_button.dart';
-import '../../core/widgets/f_field.dart';
 import '../../data/models/user_role.dart';
 import '../../data/services/identity_check.dart';
 
 /// What the capture sheet hands back once every check has passed.
 class IdentityCapture {
   const IdentityCapture({
-    required this.reference,
     required this.documentBase64,
     required this.selfieBase64,
     required this.autoCheck,
   });
 
-  final String reference;
   final String documentBase64;
   final String selfieBase64;
   final Map<String, dynamic> autoCheck;
@@ -62,10 +59,8 @@ class IdentityCaptureSheet extends StatefulWidget {
 }
 
 class _IdentityCaptureSheetState extends State<IdentityCaptureSheet> {
-  final TextEditingController _reference = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
-  String? _referenceError;
   bool _busy = false;
 
   String? _documentBase64;
@@ -73,18 +68,12 @@ class _IdentityCaptureSheetState extends State<IdentityCaptureSheet> {
   IdentityCheckResult? _documentCheck;
   IdentityCheckResult? _selfieCheck;
 
-  @override
-  void dispose() {
-    _reference.dispose();
-    super.dispose();
-  }
-
+  /// Both photos, both passing. Nothing else is asked for.
   bool get _ready =>
       _documentBase64 != null &&
       _selfieBase64 != null &&
       (_documentCheck?.passed ?? false) &&
-      (_selfieCheck?.passed ?? false) &&
-      IdentityCheck.checkReference(widget.type, _reference.text) == null;
+      (_selfieCheck?.passed ?? false);
 
   Future<void> _capture({required bool isFace}) async {
     if (_busy) return;
@@ -146,17 +135,10 @@ class _IdentityCaptureSheetState extends State<IdentityCaptureSheet> {
   }
 
   void _submit() {
-    final String? refError =
-        IdentityCheck.checkReference(widget.type, _reference.text);
-    if (refError != null) {
-      setState(() => _referenceError = refError);
-      return;
-    }
     if (!_ready) return;
 
     Navigator.of(context).pop(
       IdentityCapture(
-        reference: _reference.text.trim(),
         documentBase64: _documentBase64!,
         selfieBase64: _selfieBase64!,
         autoCheck: <String, dynamic>{
@@ -184,24 +166,10 @@ class _IdentityCaptureSheetState extends State<IdentityCaptureSheet> {
             Text(widget.type.label, style: FType.displayMd),
             const SizedBox(height: FSpace.sm),
             const Text(
-              'Checked automatically on this device — nothing is uploaded '
-              'until every check passes, and the photos are readable only by '
-              'you.',
+              'Two photos, checked automatically on this device. Nothing is '
+              'uploaded until both pass, and they are readable only by you — '
+              'not by clients, agencies, or anyone you work with.',
               style: FType.supportSm,
-            ),
-            const SizedBox(height: FSpace.x3),
-            FField(
-              controller: _reference,
-              label: 'Document number',
-              hint: widget.type.hint,
-              errorText: _referenceError,
-              onChanged: (_) {
-                if (_referenceError != null) {
-                  setState(() => _referenceError = null);
-                } else {
-                  setState(() {});
-                }
-              },
             ),
             const SizedBox(height: FSpace.x3),
             _CaptureTile(
