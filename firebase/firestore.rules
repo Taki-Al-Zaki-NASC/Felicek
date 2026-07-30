@@ -67,7 +67,11 @@ service cloud.firestore {
     function isDemoAccount() {
       return signedIn()
         && request.auth.token.email in [
-          'demo@felicek.app'
+          'demo@felicek.app',
+          // Second seat, so both sides of a transaction can be demonstrated:
+          // one posts, the other bids. A job cannot be created on another
+          // account's behalf, so this needs a real second account.
+          'demo.freelancer@felicek.app'
         ];
     }
 
