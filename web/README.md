@@ -9,6 +9,10 @@ cp .env.example .env.local   # fill from Firebase → Add app → Web
 npm install && npm run dev
 ```
 
+To put it online, see [DEPLOY.md](DEPLOY.md) — Vercel or Cloudflare Pages, both
+free tier. The step people miss is **Root Directory: `web`**, since the app is
+not at the repository root.
+
 ## Why Next.js rather than Flutter Web
 
 Flutter Web would have reused every model, repository and rule already written.
