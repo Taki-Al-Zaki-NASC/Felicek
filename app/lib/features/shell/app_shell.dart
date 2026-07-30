@@ -33,6 +33,36 @@ class _AppShellState extends State<AppShell> {
   ShellTab _tab = ShellTab.home;
   bool _callListenerBound = false;
 
+  /// Tabs visited, oldest first, with no repeats.
+  ///
+  /// Android's back button had no handler at all, so it popped the shell —
+  /// the root route — and dropped the person onto their phone's home screen
+  /// from any tab. Back should retrace where they have been.
+  final List<ShellTab> _history = <ShellTab>[ShellTab.home];
+
+  void _select(ShellTab next) {
+    if (next == _tab) return;
+    setState(() {
+      // Moving to a tab already in the trail truncates it rather than
+      // appending, so Home → Payment → Home → back does not bounce between
+      // the same two forever.
+      _history
+        ..remove(next)
+        ..add(next);
+      _tab = next;
+    });
+  }
+
+  /// True when back was consumed by moving tabs; false lets the app close.
+  bool _goBack() {
+    if (_history.length < 2) return false;
+    setState(() {
+      _history.removeLast();
+      _tab = _history.last;
+    });
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final SessionController session = context.watch<SessionController>();
@@ -55,6 +85,22 @@ class _AppShellState extends State<AppShell> {
       });
     }
 
+    return PopScope(
+      // Never pop implicitly: _goBack decides whether there is a tab to
+      // return to, and only lets the route pop when the trail is exhausted.
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? _) {
+        if (didPop) return;
+        if (_goBack()) return;
+        // Nothing left to retrace — leave the app, which is what back means
+        // on the first screen.
+        Navigator.of(context).maybePop();
+      },
+      child: _buildShell(context, uid),
+    );
+  }
+
+  Widget _buildShell(BuildContext context, String? uid) {
     final List<Widget> pages = <Widget>[
       const HomeScreen(),
       const ProposalsScreen(),
@@ -80,7 +126,7 @@ class _AppShellState extends State<AppShell> {
       ),
       bottomNavigationBar: _BottomNav(
         current: _tab,
-        onChanged: (ShellTab t) => setState(() => _tab = t),
+        onChanged: _select,
       ),
       // Messages are reachable from every tab, with a live unread badge. The
       // design only opened chat from an applicant card, which left no way
