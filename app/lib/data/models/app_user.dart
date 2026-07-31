@@ -85,11 +85,31 @@ class KycState {
 
   /// The account is usable once identity is on file *and* the deposit has
   /// cleared — the two are equally mandatory, for every role.
-  bool get isVerified => stage == KycStage.verified && depositPaid;
+  ///
+  /// All three conditions, in the same order `isAccountVerified()` in
+  /// firestore.rules checks them. `idSubmitted` used to be missing here, and
+  /// that was reachable rather than theoretical: [UserRepository.recordDeposit]
+  /// sets `depositPaid` and `stage` without touching `idSubmitted`, so an
+  /// account that paid before submitting its documents read as verified to the
+  /// app and unverified to the database. `canBid` and `canPostJob` both hang
+  /// off this, so the app unlocked bidding and posting, took a whole proposal
+  /// or listing, and the write was refused at the end. It also made
+  /// `publicSnapshot['verified']` true, which the profiles rule refuses unless
+  /// the server agrees — so the profile write failed too.
+  ///
+  /// If this and the rule ever disagree again, the app promises something the
+  /// database will not honour. Keep them identical.
+  bool get isVerified =>
+      idSubmitted && depositPaid && stage == KycStage.verified;
 
-  /// The design's progress bar: 20% → 60% (ID in) → 100% (deposit paid).
+  /// The design's progress bar: 20% → 60% (ID in) → 100% (both cleared).
+  ///
+  /// The full bar needs both steps, not just the deposit. Keying it on
+  /// `depositPaid` alone showed 100% to an account that had paid without
+  /// submitting documents — the same overclaim [isVerified] used to make, in
+  /// visual form.
   double get progress {
-    if (depositPaid) return 1.0;
+    if (idSubmitted && depositPaid) return 1.0;
     if (idSubmitted) return 0.6;
     return 0.2;
   }

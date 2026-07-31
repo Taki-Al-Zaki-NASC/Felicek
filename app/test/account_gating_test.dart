@@ -142,6 +142,60 @@ void main() {
     });
   });
 
+  group('Verification matches the security rules', () {
+    // isAccountVerified() in firestore.rules checks idSubmitted, depositPaid
+    // and stage together. The client checked only the last two, so an account
+    // that paid before submitting documents read as verified here and
+    // unverified there — the app unlocked posting and bidding and the write
+    // was refused at the end. These pin all three.
+    test('a cleared deposit alone is not verified', () {
+      const KycState paidOnly = KycState(
+        depositPaid: true,
+        stage: KycStage.verified,
+      );
+      expect(paidOnly.isVerified, isFalse,
+          reason: 'recordDeposit sets these two without touching idSubmitted');
+    });
+
+    test('documents alone are not verified', () {
+      const KycState idOnly =
+          KycState(idSubmitted: true, stage: KycStage.idSubmitted);
+      expect(idOnly.isVerified, isFalse);
+    });
+
+    test('documents and deposit still need the verified stage', () {
+      const KycState pending = KycState(idSubmitted: true, depositPaid: true);
+      expect(pending.isVerified, isFalse);
+    });
+
+    test('all three together are verified', () {
+      const KycState full = KycState(
+        idSubmitted: true,
+        depositPaid: true,
+        stage: KycStage.verified,
+      );
+      expect(full.isVerified, isTrue);
+    });
+
+    test('posting and bidding follow the same predicate', () {
+      final AppUser paidNoId = build(
+        role: UserRole.client,
+        depositPaid: true,
+        stage: KycStage.verified,
+      );
+      expect(paidNoId.canPostJob, isFalse,
+          reason: 'the rules would refuse the job write');
+
+      final AppUser ready = build(
+        role: UserRole.client,
+        idSubmitted: true,
+        depositPaid: true,
+        stage: KycStage.verified,
+      );
+      expect(ready.canPostJob, isTrue);
+    });
+  });
+
   group('KYC progress', () {
     test('steps 20% → 60% → 100%', () {
       expect(const KycState().progress, 0.2);
@@ -150,6 +204,10 @@ void main() {
         const KycState(idSubmitted: true, depositPaid: true).progress,
         1.0,
       );
+    });
+
+    test('a deposit without documents is not a full bar', () {
+      expect(const KycState(depositPaid: true).progress, 0.2);
     });
   });
 
